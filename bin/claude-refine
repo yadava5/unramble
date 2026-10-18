@@ -100,7 +100,7 @@ def api_model(key):
 
 
 # $ per million tokens (input, output, cache read), platform.claude.com pricing page 10-18; a
-# 5-minute cache write is 1.25x input. A new model family falls back to the Fable row, so the
+# cache write is 1.25x input (5 minutes) or 2x (1 hour). A new model family falls back to the Fable row, so the
 # ledger over-counts rather than under-counts.
 PRICES = {"haiku": (0.10, 0.50, 0.01), "sonnet": (2.0, 10.0, 0.10), "opus": (4.0, 20.0, 0.20),
           "fable": (10.0, 50.0, 0.25)}
@@ -157,8 +157,11 @@ def over_cap():
 def charge(model, usage):
     i, o, r = next((p for k, p in PRICES.items() if k in model), PRICES["fable"])
     u = lambda f: usage.get(f) or 0
-    usd = (u("input_tokens") * i + u("cache_creation_input_tokens") * i * 1.25
-           + u("cache_read_input_tokens") * r + u("output_tokens") * o) / 1e6  # output includes thinking
+    split = usage.get("cache_creation") or {}  # 5-minute writes cost 1.25x input, 1-hour 2x
+    w5, w1 = split.get("ephemeral_5m_input_tokens"), split.get("ephemeral_1h_input_tokens")
+    writes = (w5 or 0) * 1.25 + (w1 or 0) * 2 if split else u("cache_creation_input_tokens") * 2
+    usd = (u("input_tokens") * i + writes * i + u("cache_read_input_tokens") * r
+           + u("output_tokens") * o) / 1e6  # output includes thinking
     import fcntl  # parallel callers (several test runs at once) lost updates without this lock
     with open(os.path.join(CACHE, "spend.lock"), "w") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
@@ -169,9 +172,11 @@ def charge(model, usage):
 
 def via_api(key, payload):
     model = api_model(key)
-    # The ~3k-token system prompt is identical on every call, so it is cached: a rewrite within
-    # 5 minutes of the last one re-reads it at 1/20 of the input price.
-    system = [{"type": "text", "text": open(SYSTEM).read(), "cache_control": {"type": "ephemeral"}}]
+    # The ~3k-token system prompt is identical on every call, so it is cached for an hour (each
+    # hit restarts the hour). Simulated on a real prompt timeline (2,413 prompts, 10-18), 1 h
+    # beat both 5 min and no cache at every usage rate; 5 min lost to no cache below ~20%.
+    system = [{"type": "text", "text": open(SYSTEM).read(),
+               "cache_control": {"type": "ephemeral", "ttl": "1h"}}]
     r = api(key, "POST", "/v1/messages", {"model": model, "max_tokens": 8000, "system": system,
                                           "messages": [{"role": "user", "content": payload}]})
     charge(model, r.get("usage", {}))
