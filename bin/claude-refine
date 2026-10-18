@@ -5,11 +5,15 @@ Claude Code writes the box to /tmp/.../claude-prompt-<uuid>.md, runs $VISUAL on 
 the file back when this exits. Anything else that calls $VISUAL (git, fullscreen `v`) and an
 empty box get a real editor. Every failure path leaves the file byte-identical.
 Original text is kept in ~/.claude/cache/refine/ (last 50).
+Engine: the Anthropic API with the Keychain key from `claude-refine-key` (Max plan's monthly API
+credit) when one is stored; otherwise, or if the API call fails, `claude -p` on the login.
 """
 import json, os, re, select, shutil, signal, subprocess, sys, termios, threading, time
+import urllib.request
 
 REAL_EDITOR = os.environ.get("CLAUDE_REFINE_EDITOR", "/usr/bin/vim")
 MODEL = os.environ.get("CLAUDE_REFINE_MODEL", "sonnet")  # alias: follows new releases
+KEY_SERVICE, KEY_ACCOUNT = "claude-refine-anthropic-api", "api-key"  # see claude-refine-key
 TIMEOUT = 45
 MAX_CHARS = 12000  # beyond this it is a paste or a log, not dictation
 HOME = os.path.expanduser("~")
@@ -41,19 +45,78 @@ def tokens(text):
     return {x.rstrip(".,)") for x in t}
 
 
-def wait_with_keys(proc, payload):
-    """Wait for the rewrite while reading keys ourselves. Ctrl+C must NOT become SIGINT: the
-    signal goes to the whole foreground group and ends the Claude Code session (seen 10-17).
-    So ISIG is off for the wait, and Ctrl+C / Esc are read as plain bytes meaning cancel."""
+def keychain_key():
+    """The API key `claude-refine-key` stored. Read here only, sent only as the x-api-key header,
+    never exported, so no other process (claude, claude -p, scripts) can pick it up."""
+    r = subprocess.run(["/usr/bin/security", "find-generic-password", "-s", KEY_SERVICE,
+                        "-a", KEY_ACCOUNT, "-w"], capture_output=True, text=True)
+    return r.stdout.strip() if r.returncode == 0 and r.stdout.strip() else None
+
+
+def api(key, method, route, body=None, timeout=TIMEOUT):
+    req = urllib.request.Request(f"https://api.anthropic.com{route}", method=method,
+                                 data=json.dumps(body).encode() if body else None,
+                                 headers={"x-api-key": key, "anthropic-version": "2023-06-01",
+                                          "content-type": "application/json"})
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+        return json.load(r)
+
+
+def api_model(key):
+    """Newest Sonnet the API lists, re-checked daily, so a new release is picked up with no edit."""
+    cache = os.path.join(CACHE, "api-model.json")
+    try:
+        c = json.load(open(cache))
+        if time.time() - c["ts"] < 86400:
+            return c["id"]
+    except Exception:
+        pass
+    models = api(key, "GET", "/v1/models?limit=100", timeout=10)["data"]
+    best = sorted((m for m in models if MODEL in m["id"]), key=lambda m: m["created_at"])[-1]["id"]
+    json.dump({"id": best, "ts": time.time()}, open(cache, "w"))
+    return best
+
+
+def via_api(key, payload):
+    model = api_model(key)
+    r = api(key, "POST", "/v1/messages", {"model": model, "max_tokens": 8000,
+                                          "system": open(SYSTEM).read(),
+                                          "messages": [{"role": "user", "content": payload}]})
+    return "".join(b.get("text", "") for b in r["content"]).strip()
+
+
+def via_cli(payload, held):
+    claude = shutil.which("claude") or os.path.join(HOME, ".local", "bin", "claude")
+    held["proc"] = subprocess.Popen(
+        [claude, "-p", "--model", MODEL, "--no-session-persistence",
+         "--setting-sources", "project,local", "--system-prompt", open(SYSTEM).read(),
+         "--tools", "", "--output-format", "json"],
+        stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True,
+        cwd=NEUTRAL, start_new_session=True)
+    return json.loads(held["proc"].communicate(payload)[0]).get("result", "").strip()
+
+
+def wait_with_keys(fn):
+    """Run fn() while reading keys ourselves. Ctrl+C must NOT become SIGINT: the signal goes to
+    the whole foreground group and ends the Claude Code session (seen 10-17). So ISIG is off for
+    the wait, and Ctrl+C / Esc are read as plain bytes meaning cancel."""
     box = {}
-    th = threading.Thread(target=lambda: box.update(out=proc.communicate(payload)[0]), daemon=True)
+
+    def run():
+        try:
+            box["out"] = fn()
+        except Exception as e:
+            box["err"] = getattr(e, "reason", None) or getattr(e, "code", None) or type(e).__name__
+
+    th = threading.Thread(target=run, daemon=True)
     th.start()
     deadline = time.time() + TIMEOUT
+    done = lambda: ("error", str(box["err"])) if "err" in box else ("ok", box.get("out", ""))
     try:
         fd = os.open("/dev/tty", os.O_RDWR)
     except OSError:
         th.join(TIMEOUT)
-        return ("ok", box.get("out", "")) if not th.is_alive() else ("timeout", "")
+        return done() if not th.is_alive() else ("timeout", "")
     old = termios.tcgetattr(fd)
     new = termios.tcgetattr(fd)
     new[3] &= ~(termios.ICANON | termios.ECHO | termios.ISIG)
@@ -64,7 +127,7 @@ def wait_with_keys(proc, payload):
                 return "timeout", ""
             if select.select([fd], [], [], 0.1)[0] and re.search(rb"[\x03\x1b]", os.read(fd, 64)):
                 return "cancel", ""
-        return "ok", box.get("out", "")
+        return done()
     finally:
         termios.tcsetattr(fd, termios.TCSANOW, old)
         os.close(fd)
@@ -129,31 +192,27 @@ def main():
         os.remove(os.path.join(CACHE, old))
 
     masked, blocks = mask(body)
-    tty(f"refine: rewriting with {MODEL}… (Esc or Ctrl+C keeps your text)")
+    payload = f"<transcript>\n{masked}\n</transcript>"
     t0 = time.time()
-    claude = shutil.which("claude") or os.path.join(HOME, ".local", "bin", "claude")
-    try:
-        proc = subprocess.Popen(
-            [claude, "-p", "--model", MODEL, "--no-session-persistence",
-             "--setting-sources", "project,local", "--system-prompt", open(SYSTEM).read(),
-             "--tools", "", "--output-format", "json"],
-            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True,
-            cwd=NEUTRAL, start_new_session=True)
-    except OSError as e:
-        tty(f"refine: could not start claude ({e.strerror}) — your text is unchanged\n")
-        time.sleep(2.5)
-        return
-    status, out = wait_with_keys(proc, f"<transcript>\n{masked}\n</transcript>")
+    key, note, how = keychain_key(), "", "your login"
+    status, result = "error", ""
+    if key:
+        how = "API credit"
+        tty(f"refine: rewriting with {MODEL} via API credit… (Esc or Ctrl+C keeps your text)")
+        status, result = wait_with_keys(lambda: via_api(key, payload))
+        if status == "error":  # bad key, credit used up, network: fall back, and say so
+            note, how = f" — API failed ({result[:60]}), used your login", "your login"
+    if status not in ("ok", "cancel", "timeout"):
+        tty(f"refine: rewriting with {MODEL} via your login… (Esc or Ctrl+C keeps your text)")
+        held = {}
+        status, result = wait_with_keys(lambda: via_cli(payload, held))
+        if status != "ok" and held.get("proc"):
+            os.killpg(held["proc"].pid, signal.SIGTERM)
     if status != "ok":
-        os.killpg(proc.pid, signal.SIGTERM)
-        tty("refine: " + ("cancelled" if status == "cancel" else f"timed out after {TIMEOUT}s")
-            + " — your text is unchanged\n")
-        time.sleep(1.2)
+        tty("refine: " + {"cancel": "cancelled", "timeout": f"timed out after {TIMEOUT}s"}.get(
+            status, f"failed ({result[:60]})") + f" — your text is unchanged{note}\n")
+        time.sleep(1.5)
         return
-    try:
-        result = json.loads(out).get("result", "").strip()
-    except Exception:
-        result = ""
     if not result:
         tty("refine: no rewrite came back — your text is unchanged\n")
         time.sleep(1.5)
@@ -171,8 +230,8 @@ def main():
         return
     with open(path, "w", encoding="utf-8") as f:
         f.write(result + "\n")
-    tty(f"refine: done in {time.time() - t0:.1f}s (original in ~/.claude/cache/refine/{stamp}.md)\n")
-    time.sleep(0.6)
+    tty(f"refine: done in {time.time() - t0:.1f}s via {how}{note} (original in ~/.claude/cache/refine/{stamp}.md)\n")
+    time.sleep(1.5 if note else 0.6)
 
 
 if __name__ == "__main__":
