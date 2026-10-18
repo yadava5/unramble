@@ -6,7 +6,9 @@ the file back when this exits. Anything else that calls $VISUAL (git, fullscreen
 empty box get a real editor. Every failure path leaves the file byte-identical.
 Original text is kept in ~/.claude/cache/refine/ (last 50).
 Engine: the Anthropic API with the Keychain key from `claude-refine-key` (Max plan's monthly API
-credit) when one is stored; otherwise, or if the API call fails, `claude -p` on the login.
+credit) when one is stored; otherwise, or if the API call fails, `claude -p` on the plan — and
+then the statusline shows `⚠ refine on plan ×N` until an API rewrite succeeds again
+(cache/refine/on-plan). Every rewrite's engine is logged in cache/refine/log.jsonl.
 """
 import json, os, re, select, shutil, signal, subprocess, sys, termios, threading, time
 import urllib.request
@@ -94,6 +96,24 @@ def via_cli(payload, held):
         stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True,
         cwd=NEUTRAL, start_new_session=True)
     return json.loads(held["proc"].communicate(payload)[0]).get("result", "").strip()
+
+
+def record(how, ok, secs, reason=""):
+    """Log every rewrite's engine; keep refine/on-plan (count + last reason) while rewrites land
+    on the plan, so the statusline shows `⚠ refine on plan ×N` until the API works again."""
+    flag = os.path.join(CACHE, "on-plan")
+    with open(os.path.join(CACHE, "log.jsonl"), "a") as f:
+        f.write(json.dumps({"ts": time.strftime("%Y-%m-%dT%H:%M:%S"), "engine": how, "ok": ok,
+                            "secs": round(secs, 1), "reason": reason}) + "\n")
+    if how == "API credit" and ok:
+        if os.path.exists(flag):
+            os.remove(flag)
+    elif how == "your plan":
+        try:
+            n = int(open(flag).readline() or 0)
+        except Exception:
+            n = 0
+        open(flag, "w").write(f"{n + 1}\n{time.strftime('%H:%M')} {reason}\n")
 
 
 def wait_with_keys(fn):
@@ -194,24 +214,26 @@ def main():
     masked, blocks = mask(body)
     payload = f"<transcript>\n{masked}\n</transcript>"
     t0 = time.time()
-    key, note, how = keychain_key(), "", "your login"
+    key, how, why = keychain_key(), "your plan", "no API key saved"
     status, result = "error", ""
     if key:
         how = "API credit"
         tty(f"refine: rewriting with {MODEL} via API credit… (Esc or Ctrl+C keeps your text)")
         status, result = wait_with_keys(lambda: via_api(key, payload))
         if status == "error":  # bad key, credit used up, network: fall back, and say so
-            note, how = f" — API failed ({result[:60]}), used your login", "your login"
+            how, why = "your plan", f"API failed: {result[:60]}"
     if status not in ("ok", "cancel", "timeout"):
-        tty(f"refine: rewriting with {MODEL} via your login… (Esc or Ctrl+C keeps your text)")
+        tty(f"refine: ⚠ {why} — rewriting on YOUR PLAN usage… (Esc or Ctrl+C keeps your text)")
         held = {}
         status, result = wait_with_keys(lambda: via_cli(payload, held))
         if status != "ok" and held.get("proc"):
             os.killpg(held["proc"].pid, signal.SIGTERM)
+    note = f" — ⚠ used YOUR PLAN ({why})" if how == "your plan" else ""
+    record(how, status == "ok" and bool(result), time.time() - t0, why if how == "your plan" else "")
     if status != "ok":
         tty("refine: " + {"cancel": "cancelled", "timeout": f"timed out after {TIMEOUT}s"}.get(
             status, f"failed ({result[:60]})") + f" — your text is unchanged{note}\n")
-        time.sleep(1.5)
+        time.sleep(2.5 if note else 1.5)
         return
     if not result:
         tty("refine: no rewrite came back — your text is unchanged\n")
@@ -231,7 +253,7 @@ def main():
     with open(path, "w", encoding="utf-8") as f:
         f.write(result + "\n")
     tty(f"refine: done in {time.time() - t0:.1f}s via {how}{note} (original in ~/.claude/cache/refine/{stamp}.md)\n")
-    time.sleep(1.5 if note else 0.6)
+    time.sleep(3 if note else 0.6)
 
 
 if __name__ == "__main__":
