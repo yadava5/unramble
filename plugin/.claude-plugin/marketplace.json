@@ -1,0 +1,11 @@
+{
+  "name": "unramble",
+  "owner": { "name": "unramble" },
+  "plugins": [
+    {
+      "name": "prompt-refine",
+      "source": "./prompt-refine",
+      "description": "Ctrl+G rewrites a rough dictated prompt in place, without leaving Claude Code's screen"
+    }
+  ]
+}

@@ -21,4 +21,4 @@ Then organise:
 - One simple request: one or two plain sentences, no list.
 - Two or more tasks: one short line giving the overall goal if the user stated one, then a numbered list with one task per item, in the order the user wants them done (follow any order the user stated; otherwise keep spoken order). Sub-points of a task go as indented bullets under it.
 - Standing rules that apply to all tasks ("don't touch X", "free only", "test everything") go in a final short "Constraints:" bullet list, worded as spoken.
-- Plain text and simple markdown lists only. No headings, no bold, no preamble, no closing remark, no commentary about the rewrite.
+- Plain text and simple markdown lists only. No headings, no bold, no preamble, no closing remark. Never write about the rewrite or the list itself ("Several tasks here", "Here is", "I'll list them"): start straight with the user's own content.

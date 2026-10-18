@@ -24,7 +24,13 @@ SYSTEM = os.path.join(HOME, ".claude", "refine", "system.md")
 NEUTRAL = os.path.join(CACHE, "cwd")  # empty dir: no project CLAUDE.md, agents or hooks load
 
 
+FILTER = "--filter" in sys.argv  # stdin -> stdout for the prompt-refine mod; never touches the tty
+
+
 def tty(msg):
+    if FILTER:  # the mod runs us beside Claude Code's live screen: stderr only
+        sys.stderr.write(msg.strip("\r\n") + "\n")
+        return
     try:
         with open("/dev/tty", "w") as t:
             t.write(f"\r\x1b[2K{msg}")
@@ -133,6 +139,8 @@ def wait_with_keys(fn):
     deadline = time.time() + TIMEOUT
     done = lambda: ("error", str(box["err"])) if "err" in box else ("ok", box.get("out", ""))
     try:
+        if FILTER:  # never take the terminal from Claude Code; the mod owns cancel/timeout
+            raise OSError
         fd = os.open("/dev/tty", os.O_RDWR)
     except OSError:
         th.join(TIMEOUT)
@@ -192,14 +200,25 @@ def unmask(text, blocks):
 
 
 def main():
-    args = sys.argv[1:]
-    path = args[-1] if args else ""
-    if not re.match(r"claude-prompt-.*\.md$", os.path.basename(path)):
-        real_editor(args)
-    src = open(path, encoding="utf-8").read()
-    body = src.strip()
-    if not body:
-        real_editor(args)
+    """Editor mode: rewrite the file in place. --filter mode (the prompt-refine mod): read the
+    draft on stdin, print the rewrite on stdout; empty stdout means "keep the draft", and the
+    reason is on stderr."""
+    if FILTER:
+        time.sleep = lambda s: None
+        src = sys.stdin.read()
+        body = src.strip()
+        if not body:
+            tty("refine: nothing to rewrite")
+            return
+    else:
+        args = sys.argv[1:]
+        path = args[-1] if args else ""
+        if not re.match(r"claude-prompt-.*\.md$", os.path.basename(path)):
+            real_editor(args)
+        src = open(path, encoding="utf-8").read()
+        body = src.strip()
+        if not body:
+            real_editor(args)
     if body[0] in "/!" or len(body) > MAX_CHARS:
         tty("refine: skipped (slash command, shell escape or paste-sized text)\n")
         time.sleep(1.2)
@@ -250,8 +269,11 @@ def main():
         tty(f"refine: kept your text — the rewrite dropped {', '.join(missing[:4])}\n")
         time.sleep(2.5)
         return
-    with open(path, "w", encoding="utf-8") as f:
-        f.write(result + "\n")
+    if FILTER:
+        sys.stdout.write(result)
+    else:
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(result + "\n")
     tty(f"refine: done in {time.time() - t0:.1f}s via {how}{note} (original in ~/.claude/cache/refine/{stamp}.md)\n")
     time.sleep(3 if note else 0.6)
 
