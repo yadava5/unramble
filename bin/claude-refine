@@ -88,39 +88,61 @@ def api_model(key):
 # $ per million tokens (input, output), claude-api skill table cached 2026-10-06. A new model
 # family falls back to the Opus row, so the ledger over-counts rather than under-counts.
 PRICES = {"haiku": (0.10, 0.50), "sonnet": (2.0, 10.0), "opus": (4.0, 20.0), "fable": (10.0, 50.0)}
-DAILY_USD = float(os.environ.get("CLAUDE_REFINE_DAILY_USD", "1.00"))
-CYCLE_USD = float(os.environ.get("CLAUDE_REFINE_CYCLE_USD", "15"))
-CYCLE_DAY = 16  # the Max plan's credit renews on the 16th; unused credit does not roll over
+# The budget is the account's real credit balance, not a guessed figure (decided 10-17). No API
+# returns that balance to a normal key, so it is read off the Console's billing page and recorded
+# (`claude-refine --balance 96.40`); every response's usage is subtracted from it from then on.
+# Credit renews on the 16th with no rollover, so a reading only holds until then; past that date
+# the cap stands aside, and a credit that really runs out makes the API fail, which falls back
+# to the plan with the visible warning rather than silently.
+CYCLE_DAY = 16
+BALANCE = os.path.join(CACHE, "balance.json")
 
 
 def ledger():
-    """(path, data, today, cycle): spend per day and per credit cycle, from each response's usage."""
+    """(path, data, today): spend per local day, from each response's usage."""
     path = os.path.join(CACHE, "spend.json")
     try:
         data = json.load(open(path))
     except Exception:
         data = {}
+    return path, {k: v for k, v in data.items() if k[:1].isdigit()}, time.strftime("%Y-%m-%d")
+
+
+def next_renewal():
     t = time.localtime()
-    y, m = (t.tm_year, t.tm_mon) if t.tm_mday >= CYCLE_DAY else (
-        (t.tm_year, t.tm_mon - 1) if t.tm_mon > 1 else (t.tm_year - 1, 12))
-    return path, data, time.strftime("%Y-%m-%d"), f"cycle-{y}-{m:02d}-{CYCLE_DAY}"
+    y, m = (t.tm_year, t.tm_mon) if t.tm_mday < CYCLE_DAY else (
+        (t.tm_year, t.tm_mon + 1) if t.tm_mon < 12 else (t.tm_year + 1, 1))
+    return f"{y}-{m:02d}-{CYCLE_DAY:02d}"
+
+
+def remaining():
+    """Estimated credit left, or None when no reading is recorded or it predates a renewal."""
+    try:
+        b = json.load(open(BALANCE))
+    except Exception:
+        return None
+    if time.strftime("%Y-%m-%d") >= b["renews"]:
+        return None
+    return b["usd"] - (sum(ledger()[1].values()) - b["ledger_at_reading"])
+
+
+def set_balance(usd):
+    json.dump({"usd": usd, "read": time.strftime("%Y-%m-%dT%H:%M"), "renews": next_renewal(),
+               "ledger_at_reading": sum(ledger()[1].values())}, open(BALANCE, "w"), indent=1)
 
 
 def over_cap():
-    _, data, today, cycle = ledger()
-    if data.get(today, 0) >= DAILY_USD:
-        return f"today's ${DAILY_USD:.2f} refine budget is used (${data[today]:.2f})"
-    if data.get(cycle, 0) >= CYCLE_USD:
-        return f"this cycle's ${CYCLE_USD:.0f} refine budget is used (${data[cycle]:.2f})"
+    left = remaining()
+    if left is not None and left <= 0:
+        return f"the recorded API credit is used up (${left:.2f} left)"
     return None
 
 
 def charge(model, usage):
     i, o = next((p for k, p in PRICES.items() if k in model), PRICES["opus"])
     usd = (usage.get("input_tokens", 0) * i + usage.get("output_tokens", 0) * o) / 1e6
-    path, data, today, cycle = ledger()
-    for k in (today, cycle):
-        data[k] = round(data.get(k, 0) + usd, 5)
+    path, data, today = ledger()
+    data[today] = round(data.get(today, 0) + usd, 5)
     json.dump(data, open(path, "w"), indent=1)
 
 
@@ -230,6 +252,13 @@ def mask(text):
     return "\n".join(out), blocks
 
 
+def unwrap(text):
+    """The system prompt's examples use <rewrite> tags, and once in 80 runs Sonnet copied them,
+    with a sentence about its rules in front. Keep only what is inside the tags."""
+    m = re.search(r"<rewrite>\s*(.*?)\s*</rewrite>", text, re.S)
+    return m.group(1) if m else text
+
+
 def unmask(text, blocks):
     for n, block in enumerate(blocks, 1):
         marker = f"[[paste {n}]]"
@@ -242,7 +271,15 @@ def unmask(text, blocks):
 def main():
     """Editor mode: rewrite the file in place. --filter mode (the prompt-refine mod): read the
     draft on stdin, print the rewrite on stdout; empty stdout means "keep the draft", and the
-    reason is on stderr."""
+    reason is on stderr. --balance [USD]: record the Console's credit balance, or show what's left."""
+    if sys.argv[1:2] == ["--balance"]:
+        if sys.argv[2:]:
+            set_balance(float(sys.argv[2].lstrip("$")))
+        left = remaining()
+        print("No balance recorded (or it predates the last renewal on the 16th). Read it from "
+              "platform.claude.com → Settings → Billing, then: claude-refine --balance 96.40"
+              if left is None else f"~${left:.2f} API credit left (renews {json.load(open(BALANCE))['renews']})")
+        return
     if FILTER:
         time.sleep = lambda s: None
         src = sys.stdin.read()
@@ -303,7 +340,7 @@ def main():
         time.sleep(1.5)
         return
 
-    result = unmask(result, blocks)
+    result = unmask(unwrap(result), blocks)
     if result is None:
         tty("refine: kept your text — the rewrite lost or duplicated a pasted block\n")
         time.sleep(2.5)
@@ -318,7 +355,9 @@ def main():
     else:
         with open(path, "w", encoding="utf-8") as f:
             f.write(result + "\n")
-    tty(f"refine: done in {time.time() - t0:.1f}s via {how}{note} (original in ~/.claude/cache/refine/{stamp}.md)\n")
+    left = remaining() if how == "API credit" else None
+    left = f", ~${left:.2f} credit left" if left is not None else ""
+    tty(f"refine: done in {time.time() - t0:.1f}s via {how}{left}{note} (original in ~/.claude/cache/refine/{stamp}.md)\n")
     time.sleep(3 if note else 0.6)
 
 
