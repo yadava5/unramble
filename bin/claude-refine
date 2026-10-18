@@ -85,11 +85,51 @@ def api_model(key):
     return best
 
 
+# $ per million tokens (input, output), claude-api skill table cached 2026-10-06. A new model
+# family falls back to the Opus row, so the ledger over-counts rather than under-counts.
+PRICES = {"haiku": (0.10, 0.50), "sonnet": (2.0, 10.0), "opus": (4.0, 20.0), "fable": (10.0, 50.0)}
+DAILY_USD = float(os.environ.get("CLAUDE_REFINE_DAILY_USD", "1.00"))
+CYCLE_USD = float(os.environ.get("CLAUDE_REFINE_CYCLE_USD", "15"))
+CYCLE_DAY = 16  # the Max plan's credit renews on the 16th; unused credit does not roll over
+
+
+def ledger():
+    """(path, data, today, cycle): spend per day and per credit cycle, from each response's usage."""
+    path = os.path.join(CACHE, "spend.json")
+    try:
+        data = json.load(open(path))
+    except Exception:
+        data = {}
+    t = time.localtime()
+    y, m = (t.tm_year, t.tm_mon) if t.tm_mday >= CYCLE_DAY else (
+        (t.tm_year, t.tm_mon - 1) if t.tm_mon > 1 else (t.tm_year - 1, 12))
+    return path, data, time.strftime("%Y-%m-%d"), f"cycle-{y}-{m:02d}-{CYCLE_DAY}"
+
+
+def over_cap():
+    _, data, today, cycle = ledger()
+    if data.get(today, 0) >= DAILY_USD:
+        return f"today's ${DAILY_USD:.2f} refine budget is used (${data[today]:.2f})"
+    if data.get(cycle, 0) >= CYCLE_USD:
+        return f"this cycle's ${CYCLE_USD:.0f} refine budget is used (${data[cycle]:.2f})"
+    return None
+
+
+def charge(model, usage):
+    i, o = next((p for k, p in PRICES.items() if k in model), PRICES["opus"])
+    usd = (usage.get("input_tokens", 0) * i + usage.get("output_tokens", 0) * o) / 1e6
+    path, data, today, cycle = ledger()
+    for k in (today, cycle):
+        data[k] = round(data.get(k, 0) + usd, 5)
+    json.dump(data, open(path, "w"), indent=1)
+
+
 def via_api(key, payload):
     model = api_model(key)
     r = api(key, "POST", "/v1/messages", {"model": model, "max_tokens": 8000,
                                           "system": open(SYSTEM).read(),
                                           "messages": [{"role": "user", "content": payload}]})
+    charge(model, r.get("usage", {}))
     return "".join(b.get("text", "") for b in r["content"]).strip()
 
 
@@ -235,6 +275,10 @@ def main():
     t0 = time.time()
     key, how, why = keychain_key(), "your plan", "no API key saved"
     status, result = "error", ""
+    if key and over_cap():  # a spent budget stops here: no quiet slide onto the plan either
+        tty(f"refine: {over_cap()} — your text is unchanged\n")
+        time.sleep(2.5)
+        return
     if key:
         how = "API credit"
         tty(f"refine: rewriting with {MODEL} via API credit… (Esc or Ctrl+C keeps your text)")
