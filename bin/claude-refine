@@ -14,7 +14,11 @@ import json, os, re, select, shutil, signal, subprocess, sys, termios, threading
 import urllib.request
 
 REAL_EDITOR = os.environ.get("CLAUDE_REFINE_EDITOR", "/usr/bin/vim")
-MODEL = os.environ.get("CLAUDE_REFINE_MODEL", "sonnet")  # alias: follows new releases
+# Aliases, so new releases are picked up. Opus on the API credit: on the 39 hardest cases it
+# kept the meaning in 77/78 rewrites against Sonnet's 70/78, and a blind judge preferred its
+# prompts 30 to 14 (10-18). The plan fallback stays on Sonnet to spare the weekly limit.
+MODEL = os.environ.get("CLAUDE_REFINE_MODEL", "opus")
+PLAN_MODEL = os.environ.get("CLAUDE_REFINE_PLAN_MODEL", "sonnet")
 KEY_SERVICE, KEY_ACCOUNT = "claude-refine-anthropic-api", "api-key"  # see claude-refine-key
 TIMEOUT = 45
 MAX_CHARS = 12000  # beyond this it is a paste or a log, not dictation
@@ -53,6 +57,15 @@ def tokens(text):
     return {x.rstrip(".,)") for x in t}
 
 
+CUE = re.compile(r"\b(no|nope|nah|wait|actually|sorry|scratch that|i mean|not that|never ?mind|forget it)\b", re.I)
+
+
+def retracted(text, tok):
+    """A value the speaker corrected right away ("src/utils, no wait, src/lib") may legitimately
+    vanish from the rewrite: a correction cue follows some occurrence of it within ~10 words."""
+    return any(CUE.search(text[m.end(): m.end() + 70]) for m in re.finditer(re.escape(tok), text))
+
+
 def keychain_key():
     """The API key `claude-refine-key` stored. Read here only, sent only as the x-api-key header,
     never exported, so no other process (claude, claude -p, scripts) can pick it up."""
@@ -71,23 +84,26 @@ def api(key, method, route, body=None, timeout=TIMEOUT):
 
 
 def api_model(key):
-    """Newest Sonnet the API lists, re-checked daily, so a new release is picked up with no edit."""
+    """Newest model of the MODEL family the API lists, re-checked daily, so a new release is
+    picked up with no edit."""
     cache = os.path.join(CACHE, "api-model.json")
     try:
         c = json.load(open(cache))
-        if time.time() - c["ts"] < 86400:
+        if time.time() - c["ts"] < 86400 and c.get("alias") == MODEL:
             return c["id"]
     except Exception:
         pass
     models = api(key, "GET", "/v1/models?limit=100", timeout=10)["data"]
     best = sorted((m for m in models if MODEL in m["id"]), key=lambda m: m["created_at"])[-1]["id"]
-    json.dump({"id": best, "ts": time.time()}, open(cache, "w"))
+    json.dump({"id": best, "alias": MODEL, "ts": time.time()}, open(cache, "w"))
     return best
 
 
-# $ per million tokens (input, output), claude-api skill table cached 2026-10-06. A new model
-# family falls back to the Opus row, so the ledger over-counts rather than under-counts.
-PRICES = {"haiku": (0.10, 0.50), "sonnet": (2.0, 10.0), "opus": (4.0, 20.0), "fable": (10.0, 50.0)}
+# $ per million tokens (input, output, cache read), platform.claude.com pricing page 10-18; a
+# 5-minute cache write is 1.25x input. A new model family falls back to the Fable row, so the
+# ledger over-counts rather than under-counts.
+PRICES = {"haiku": (0.10, 0.50, 0.01), "sonnet": (2.0, 10.0, 0.10), "opus": (4.0, 20.0, 0.20),
+          "fable": (10.0, 50.0, 0.25)}
 # The budget is the account's real credit balance, not a guessed figure (decided 10-17). No API
 # returns that balance to a normal key, so it is read off the Console's billing page and recorded
 # (`claude-refine --balance 96.40`); every response's usage is subtracted from it from then on.
@@ -139,26 +155,33 @@ def over_cap():
 
 
 def charge(model, usage):
-    i, o = next((p for k, p in PRICES.items() if k in model), PRICES["opus"])
-    usd = (usage.get("input_tokens", 0) * i + usage.get("output_tokens", 0) * o) / 1e6
-    path, data, today = ledger()
-    data[today] = round(data.get(today, 0) + usd, 5)
-    json.dump(data, open(path, "w"), indent=1)
+    i, o, r = next((p for k, p in PRICES.items() if k in model), PRICES["fable"])
+    u = lambda f: usage.get(f) or 0
+    usd = (u("input_tokens") * i + u("cache_creation_input_tokens") * i * 1.25
+           + u("cache_read_input_tokens") * r + u("output_tokens") * o) / 1e6  # output includes thinking
+    import fcntl  # parallel callers (several test runs at once) lost updates without this lock
+    with open(os.path.join(CACHE, "spend.lock"), "w") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        path, data, today = ledger()
+        data[today] = round(data.get(today, 0) + usd, 5)
+        json.dump(data, open(path, "w"), indent=1)
 
 
 def via_api(key, payload):
     model = api_model(key)
-    r = api(key, "POST", "/v1/messages", {"model": model, "max_tokens": 8000,
-                                          "system": open(SYSTEM).read(),
+    # The ~3k-token system prompt is identical on every call, so it is cached: a rewrite within
+    # 5 minutes of the last one re-reads it at 1/20 of the input price.
+    system = [{"type": "text", "text": open(SYSTEM).read(), "cache_control": {"type": "ephemeral"}}]
+    r = api(key, "POST", "/v1/messages", {"model": model, "max_tokens": 8000, "system": system,
                                           "messages": [{"role": "user", "content": payload}]})
     charge(model, r.get("usage", {}))
-    return "".join(b.get("text", "") for b in r["content"]).strip()
+    return "".join(b.get("text", "") for b in r["content"] if b.get("type") == "text").strip()
 
 
 def via_cli(payload, held):
     claude = shutil.which("claude") or os.path.join(HOME, ".local", "bin", "claude")
     held["proc"] = subprocess.Popen(
-        [claude, "-p", "--model", MODEL, "--no-session-persistence",
+        [claude, "-p", "--model", PLAN_MODEL, "--no-session-persistence",
          "--setting-sources", "project,local", "--system-prompt", open(SYSTEM).read(),
          "--tools", "", "--output-format", "json"],
         stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True,
@@ -345,7 +368,7 @@ def main():
         tty("refine: kept your text — the rewrite lost or duplicated a pasted block\n")
         time.sleep(2.5)
         return
-    missing = sorted(t for t in tokens(body) if t not in result)
+    missing = sorted(t for t in tokens(body) if t not in result and not retracted(body, t))
     if missing:
         tty(f"refine: kept your text — the rewrite dropped {', '.join(missing[:4])}\n")
         time.sleep(2.5)
