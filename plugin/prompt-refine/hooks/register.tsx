@@ -1,8 +1,8 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
-// Ctrl+G rewrites the prompt box in place with ~/.local/bin/claude-refine --filter (Sonnet on
-// the API credit, or the plan with a warning), never leaving Claude Code's screen.
+// Ctrl+G rewrites the prompt box in place with ~/.local/bin/claude-refine --filter (Opus on
+// the API credit, or Sonnet on the plan with a warning), never leaving Claude Code's screen.
 //
 // A key reaches a mod only as a band Button naming an engine action that no engine handler
 // holds while the prompt is focused: keybindings.json binds ctrl+g in Chat to
@@ -33,10 +33,23 @@ async function track($: EngineInterface, text: string) {
   await update($, isRefined, () => last !== '' && text.trim() === last.trim())
 }
 
+// Real-use signal for tuning the prompt: a restore marks a rewrite the user rejected, a send
+// says whether they kept it as is. Never awaited, so a slow or
+// failing log can't delay the swap or the send.
+function note($: EngineInterface, kind: 'restore' | 'sent', stdin: string) {
+  $.process
+    .run(['/bin/sh', '-c', `exec "$HOME/.local/bin/claude-refine" --feedback ${kind}`], {
+      stdin,
+      timeoutMs: 5_000,
+    })
+    .catch(() => {})
+}
+
 async function refine($: EngineInterface) {
   if (await read($, isBusy)) return
   const before = await $.prompt.read()
   if (await read($, isRefined)) {
+    note($, 'restore', await read($, rewrite))
     await $.prompt.fill({ text: await read($, original), mode: 'replace' })
     await update($, rewrite, () => '')
     await update($, isRefined, () => false)
@@ -84,9 +97,15 @@ export const register: Register = on => {
     return next(e)
   })
 
-  // Only clears the band; if this ever throws, the prompt still goes through.
+  // Clears the band and the last rewrite (so the next prompt isn't compared with a stale one),
+  // and reports whether a rewrite went out as is. If this ever throws, the prompt still goes.
   on('prompt.submit', async ($, e, next) => {
+    const last = await read($, rewrite)
+    if (last && !e.command) note($, 'sent', JSON.stringify({ rewrite: last, sent: e.text }))
     await update($, hasDraft, () => false)
+    await update($, rewrite, () => '')
+    await update($, original, () => '')
+    await update($, isRefined, () => false)
     return next(e)
   }).catch(($, e, next) => next(e))
 

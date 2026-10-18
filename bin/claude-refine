@@ -10,7 +10,7 @@ credit) when one is stored; otherwise, or if the API call fails, `claude -p` on 
 then the statusline shows `⚠ refine on plan ×N` until an API rewrite succeeds again
 (cache/refine/on-plan). Every rewrite's engine is logged in cache/refine/log.jsonl.
 """
-import json, os, re, select, shutil, signal, subprocess, sys, termios, threading, time
+import hashlib, json, os, re, select, shutil, signal, subprocess, sys, termios, threading, time
 import urllib.request
 
 REAL_EDITOR = os.environ.get("CLAUDE_REFINE_EDITOR", "/usr/bin/vim")
@@ -162,6 +162,8 @@ def charge(model, usage):
     writes = (w5 or 0) * 1.25 + (w1 or 0) * 2 if split else u("cache_creation_input_tokens") * 2
     usd = (u("input_tokens") * i + writes * i + u("cache_read_input_tokens") * r
            + u("output_tokens") * o) / 1e6  # output includes thinking
+    if usage.get("service_tier") == "batch":  # Message Batches bill at half price
+        usd /= 2
     import fcntl  # parallel callers (several test runs at once) lost updates without this lock
     with open(os.path.join(CACHE, "spend.lock"), "w") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
@@ -192,6 +194,40 @@ def via_cli(payload, held):
         stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True,
         cwd=NEUTRAL, start_new_session=True)
     return json.loads(held["proc"].communicate(payload)[0]).get("result", "").strip()
+
+
+# Real-use data for tuning the prompt. Local only: the cache directory is never committed.
+# Text is stored masked, so pasted logs and code never land here, only their [[paste N]]
+# markers.
+PAIRS = os.path.join(CACHE, "pairs.jsonl")
+FEEDBACK = os.path.join(CACHE, "feedback.jsonl")
+pair_id = lambda text: hashlib.sha1(text.strip().encode()).hexdigest()[:12]
+
+
+def log_pair(src, out, shown, how, outcome="shown"):
+    """One rewrite as the user saw it: src and out masked, keyed by the text that was shown."""
+    with open(PAIRS, "a") as f:
+        f.write(json.dumps({"id": pair_id(shown), "ts": time.strftime("%Y-%m-%dT%H:%M:%S"),
+                            "engine": how, "model": MODEL if how == "API credit" else PLAN_MODEL,
+                            "prompt": hashlib.sha1(open(SYSTEM, "rb").read()).hexdigest()[:10],
+                            "outcome": outcome, "src": src, "out": out}) + "\n")
+
+
+def feedback(kind):
+    """From the prompt-refine mod: `restore` (stdin = the rewrite the user swapped back out) or
+    `sent` (stdin = {"rewrite", "sent"}: what the user actually sent after a rewrite)."""
+    raw = sys.stdin.read()
+    if kind == "restore":
+        row = {"id": pair_id(raw), "kind": "restored"}
+    else:
+        d = json.loads(raw)
+        same = d["sent"].strip() == d["rewrite"].strip()
+        row = {"id": pair_id(d["rewrite"]), "kind": "accepted" if same else "edited"}
+        if not same:
+            row["sent"] = mask(d["sent"].strip())[0]
+    row["ts"] = time.strftime("%Y-%m-%dT%H:%M:%S")
+    with open(FEEDBACK, "a") as f:
+        f.write(json.dumps(row) + "\n")
 
 
 def record(how, ok, secs, reason=""):
@@ -300,6 +336,8 @@ def main():
     """Editor mode: rewrite the file in place. --filter mode (the prompt-refine mod): read the
     draft on stdin, print the rewrite on stdout; empty stdout means "keep the draft", and the
     reason is on stderr. --balance [USD]: record the Console's credit balance, or show what's left."""
+    if sys.argv[1:2] == ["--feedback"]:
+        return feedback(sys.argv[2])
     if sys.argv[1:2] == ["--balance"]:
         if sys.argv[2:]:
             set_balance(float(sys.argv[2].lstrip("$")))
@@ -368,16 +406,20 @@ def main():
         time.sleep(1.5)
         return
 
-    result = unmask(unwrap(result), blocks)
+    out_masked = unwrap(result)
+    result = unmask(out_masked, blocks)
     if result is None:
+        log_pair(masked, out_masked, out_masked, how, "refused: paste marker lost")
         tty("refine: kept your text — the rewrite lost or duplicated a pasted block\n")
         time.sleep(2.5)
         return
     missing = sorted(t for t in tokens(body) if t not in result and not retracted(body, t))
     if missing:
+        log_pair(masked, out_masked, result, how, f"refused: dropped {', '.join(missing[:4])}")
         tty(f"refine: kept your text — the rewrite dropped {', '.join(missing[:4])}\n")
         time.sleep(2.5)
         return
+    log_pair(masked, out_masked, result, how)
     if FILTER:
         sys.stdout.write(result)
     else:
