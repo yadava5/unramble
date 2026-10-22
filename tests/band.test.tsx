@@ -39,7 +39,8 @@ function engine(on: On, reply: (prompt: string) => string, home: { dir?: string;
     const usage = { input_tokens: 1, output_tokens: 1, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 }
     return { value: { isAnswered: true, text: reply(e.prompt), usage } }
   })
-  const isKeys = (path: string) => path.endsWith('/keybindings.json')
+  // the engine hands Windows paths over with backslashes
+  const isKeys = (path: string) => /[\\/]keybindings\.json$/.test(path)
   on('fs.read', (_, e) => ({ value: isKeys(e.path) ? (home.keybindings ?? '') : 'RULES' }))
   on('fs.exists', (_, e) => ({ value: isKeys(e.path) && home.keybindings !== undefined }))
   on('env.get', (_, e) => ({ value: e.name === 'HOME' ? home.dir : undefined }))
