@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- The band follows the box through `prompt.edit` alone; the `prompt.change` hook is gone, as
+  Anthropic's plugin directory does not list that event yet. A prompt recalled from history,
+  or a box you cleared, reaches the band at your next key.
+- A privacy policy, [PRIVACY.md](PRIVACY.md), named in the plugin manifest.
+
 ## 1.0.1 — 2026-10-22
 
 Security hardening after an independent review.

@@ -148,8 +148,9 @@ Everything the plugin's hooks module ([`hooks/register.tsx`](hooks/register.tsx)
   - `session.start`: registers `/unramble` and checks whether Ctrl+G is bound; if not, shows
     one toast saying to run `/unramble setup`.
   - `command.run` (`/unramble`): runs `setup` or `status`.
-  - `prompt.change` and `prompt.edit`: note whether the box holds a draft and what a paste chip
-    stands for, so the band and the rewrite see your words. They change nothing.
+  - `prompt.edit`: notes whether the box holds a draft and what a paste chip stands for, so the
+    band and the rewrite see your words. It changes nothing. A prompt recalled from history, or
+    a box you cleared, reaches the band at your next key.
   - `prompt.submit`: forgets the draft once you send it. It never changes or blocks a prompt.
   - `ui.render` (above the prompt): draws the `⌃G refine` band.
 - **Runs**: no commands and no processes. Adds one slash command, `/unramble`.

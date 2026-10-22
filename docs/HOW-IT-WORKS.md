@@ -13,7 +13,7 @@ sequenceDiagram
     participant M as Claude (your session's login)
 
     You->>Box: speak or type a rough prompt
-    Box-->>U: prompt.change / prompt.edit (3+ words: band shows "⌃G refine")
+    Box-->>U: prompt.edit (3+ words: band shows "⌃G refine")
     You->>U: Ctrl+G
     U->>Box: $.prompt.read()
     U->>T: mask pasted logs as [[paste N]]

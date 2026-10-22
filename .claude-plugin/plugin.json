@@ -6,6 +6,7 @@
   "homepage": "https://github.com/yadava5/unramble",
   "repository": "https://github.com/yadava5/unramble",
   "license": "MIT",
+  "privacyPolicyUrl": "https://github.com/yadava5/unramble/blob/main/PRIVACY.md",
   "keywords": ["dictation", "prompt", "voice", "rewrite", "keybinding"],
   "icon": "./assets/logo-512.png",
   "types": "./types/index.d.ts",

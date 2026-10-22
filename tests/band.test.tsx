@@ -2,12 +2,16 @@ import { expect, mock, test } from 'claude-code/testing'
 import type { Engine } from 'claude-code/testing'
 import type { On } from 'claude-code'
 
-// The test host raises `prompt.change` like a keystroke in the box, though this build's
-// declarations list no `$.prompt.change` for tests.
-const typed = ($: Engine, text: string) =>
-  ($.prompt as unknown as { change: (e: { text: string; cursor: number }) => Promise<unknown> }).change({
-    text,
-    cursor: text.length,
+// The test host raises `prompt.edit` the way the box does for a burst of keys, though this
+// build's declarations list no `$.prompt.edit` for tests.
+const typed = ($: Engine, inputText: string) =>
+  ($.prompt as unknown as { edit: (e: object) => Promise<{ text: string }> }).edit({
+    origin: { kind: 'composer' },
+    text: '',
+    cursor: 0,
+    start: 0,
+    end: 0,
+    inputText,
   })
 
 // The whole Ctrl+G path through the engine's own test host: the band draws, a press sends the
@@ -26,9 +30,18 @@ const ROUGH = 'okay so um can you look at the auth handler, uh no wait, the sess
 const CLEAN = 'Look at the session middleware in `src/session.ts`.'
 
 function engine(on: On, reply: (prompt: string) => string, home: { dir?: string; keybindings?: string } = {}) {
-  const world = { box: ROUGH, toasts: [] as string[], asked: [] as { system?: string; prompt: string }[] }
+  const world = {
+    box: ROUGH,
+    toasts: [] as string[],
+    asked: [] as { system?: string; prompt: string }[],
+    fold: (inputText: string) => inputText,
+  }
   mock.clock(on)
-  on('prompt.change', (_, e) => ({ text: e.text }))
+  // the box takes the edit; `fold` stands for the engine turning a paste into a chip
+  on('prompt.edit', (_, e) => {
+    const input = world.fold(e.inputText)
+    return { text: e.text.slice(0, e.start) + input + e.text.slice(e.end), cursor: e.start + input.length }
+  })
   on('prompt.read', () => ({ value: { text: world.box, cursor: world.box.length } }))
   on('prompt.fill', (_, e) => {
     world.box = e.text
@@ -107,14 +120,9 @@ test('a dictation app that pastes: the chip is opened up for the rewrite', async
     return 'Rename the config loader to settings loader, everywhere.'
   })
   // the engine collapses a multi-line paste into a chip in the box
-  on('prompt.edit', (_, e) => {
-    const text = e.text.slice(0, e.start) + CHIP + e.text.slice(e.end)
-    return { text, cursor: e.start + CHIP.length }
-  })
-  const edit = ($.prompt as unknown as { edit: (e: object) => Promise<{ text: string }> }).edit
-  const box = await edit({ origin: { kind: 'composer' }, text: '', cursor: 0, start: 0, end: 0, inputText: heard })
+  world.fold = () => CHIP
+  const box = await typed($, heard)
   world.box = box.text
-  await typed($, box.text)
   const ui = await $.ui.mount(BAND)
   await ui.press({ key: 'unramble' })
 

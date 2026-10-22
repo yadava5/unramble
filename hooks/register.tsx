@@ -318,11 +318,6 @@ export const register: Register = (on, options) => {
     return box
   })
 
-  on('prompt.change', async ($, e, next) => {
-    await track($, e.text)
-    return next(e)
-  })
-
   // A sent prompt clears the band and the stored rewrite, so the next draft is never compared
   // with a stale one. If this ever throws, the prompt still goes.
   on('prompt.submit', async ($, e, next) => {
