@@ -33,5 +33,16 @@ export const BAND = {
 // The plugin's toast, word for word. Wraps after the "·" when the frame is narrow.
 export const TOAST = "unramble: done in 3.3s with sonnet on your plan · ⌃G again restores your original";
 
-export const INSTALL = "/plugin install unramble --marketplace yadava5/unramble";
+// The two install paths from the README, word for word. `where` names the place each is
+// typed; plugin installs bind nothing until `/unramble setup` runs, so it travels with it.
+export const INSTALL = {
+  terminal: { where: "In your terminal", commands: ["npx unramble"] },
+  claudeCode: {
+    where: "Or inside Claude Code",
+    commands: ["/plugin install unramble --marketplace yadava5/unramble", "/unramble setup"],
+  },
+} as const;
+export type InstallPath = (typeof INSTALL)[keyof typeof INSTALL];
+
 export const REPO = "github.com/yadava5/unramble";
+export const NPM = "npmjs.com/package/unramble";

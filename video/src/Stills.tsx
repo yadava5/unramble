@@ -1,7 +1,7 @@
 import { AbsoluteFill } from "remotion";
 import { Compare } from "./Compare";
 import { INSTALL } from "./copy";
-import { commandChip, headline, HOOK_FIRST, HOOK_SECOND, Keys } from "./LinkedIn";
+import { headline, HOOK_FIRST, HOOK_SECOND, Install, Keys, primaryChip, where } from "./LinkedIn";
 import { Wordmark } from "./Mark";
 import { color, spotlight } from "./theme";
 
@@ -19,19 +19,27 @@ export const LinkedInCover = () => (
       {/* Frame far past the last strike: every dropped phrase is struck. */}
       <Compare frame={1000} width={984} fontSize={23} />
     </div>
-    <div style={{ position: "absolute", left: 80, bottom: 48 }}>
+    {/* Only the short path: the cover's job is the hook, the end card carries both. */}
+    <div style={{ position: "absolute", left: 80, right: 80, bottom: 48, height: 56, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
       <Wordmark height={56} tile={color.paper} stroke={color.canvas} text={color.paper} />
+      <div style={{ display: "flex", alignItems: "center", gap: 22 }}>
+        <div style={where(26)}>{INSTALL.terminal.where}</div>
+        <div style={{ ...primaryChip, alignSelf: "center", fontSize: 30, padding: "4px 22px" }}>{INSTALL.terminal.commands[0]}</div>
+      </div>
     </div>
   </AbsoluteFill>
 );
 
-/** GitHub social preview, 1280×640. */
+/** GitHub social preview, 1280×640. The two install paths sit side by side, short one first. */
 export const SocialPreview = () => (
-  <AbsoluteFill style={{ background: spotlight("30%", "45%", "70% 90%"), justifyContent: "center", padding: "0 96px" }}>
-    <Wordmark height={128} tile={color.paper} stroke={color.canvas} text={color.paper} />
-    <div style={{ ...headline, fontSize: 46, lineHeight: 1.15, fontWeight: 500, letterSpacing: "-0.015em", marginTop: 44, maxWidth: 980 }}>
+  <AbsoluteFill style={{ background: spotlight("30%", "45%", "70% 90%"), justifyContent: "center", padding: "0 88px" }}>
+    <Wordmark height={116} tile={color.paper} stroke={color.canvas} text={color.paper} />
+    <div style={{ ...headline, fontSize: 46, lineHeight: 1.15, fontWeight: 500, letterSpacing: "-0.015em", marginTop: 40, maxWidth: 980 }}>
       Turns a rambling, dictated prompt into a clean one. Press <Keys>⌃G</Keys> in Claude Code.
     </div>
-    <div style={{ ...commandChip, marginTop: 44, padding: "18px 26px", fontSize: 26 }}>{INSTALL}</div>
+    <div style={{ display: "flex", alignItems: "flex-start", gap: 32, marginTop: 44 }}>
+      <Install path={INSTALL.terminal} primary labelSize={24} fontSize={24} padding="16px 24px" />
+      <Install path={INSTALL.claudeCode} labelSize={24} fontSize={24} padding="16px 24px" />
+    </div>
   </AbsoluteFill>
 );

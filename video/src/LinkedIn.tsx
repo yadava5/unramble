@@ -1,7 +1,7 @@
 import type { CSSProperties, ReactNode } from "react";
 import { AbsoluteFill, Easing, interpolate, Sequence, useCurrentFrame } from "remotion";
 import { Compare } from "./Compare";
-import { INSTALL, REPO } from "./copy";
+import { INSTALL, type InstallPath, NPM, REPO } from "./copy";
 import { KeyCaps } from "./KeyCaps";
 import { Wordmark } from "./Mark";
 import { Terminal } from "./Terminal";
@@ -44,7 +44,36 @@ export const commandChip: CSSProperties = {
   fontVariantLigatures: "none",
   color: color.fg,
   whiteSpace: "pre",
+  lineHeight: 1.5,
 };
+
+/** The short path is inverted, like the logo tile, so it is the one the eye takes first. */
+export const primaryChip: CSSProperties = {
+  ...commandChip,
+  background: color.paper,
+  border: `1px solid ${color.paper}`,
+  color: color.canvas,
+  fontWeight: 500,
+};
+
+/** Where a command is typed. Prose, so the text face; only the command itself is mono. */
+export const where = (fontSize: number): CSSProperties => ({
+  fontFamily: font.sans,
+  fontWeight: 500,
+  fontSize,
+  lineHeight: 1.2,
+  color: color.dim,
+});
+
+type InstallProps = { path: InstallPath; primary?: boolean; labelSize: number; fontSize: number; padding: string; style?: CSSProperties };
+
+/** A label over its command chip; a path with several commands stacks them one per line. */
+export const Install = ({ path, primary = false, labelSize, fontSize, padding, style }: InstallProps) => (
+  <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: Math.round(labelSize * 0.5), ...style }}>
+    <div style={where(labelSize)}>{path.where}</div>
+    <div style={{ ...(primary ? primaryChip : commandChip), fontSize, padding }}>{path.commands.join("\n")}</div>
+  </div>
+);
 
 /** ⌃G set as a key name: JetBrains Mono carries the ⌃ glyph, Instrument Sans does not. */
 export const Keys = ({ children }: { children: ReactNode }) => (
@@ -149,20 +178,26 @@ export const EndCard = ({ frame }: { frame: number }) => {
   const draw = interpolate(frame, [8, 42], [0, 1], { ...clamp, easing: Easing.inOut(Easing.cubic) });
   const word = rise(frame, 30, 12);
   const line = rise(frame, 46);
-  const chip = rise(frame, 56);
-  const repo = rise(frame, 64);
+  const terminal = rise(frame, 56);
+  const claudeCode = rise(frame, 66);
+  const links = rise(frame, 76);
   const lift = (p: number): CSSProperties => ({ opacity: p, transform: `translateY(${(1 - p) * 18}px)` });
   return (
     <AbsoluteFill style={{ justifyContent: "center", padding: `0 ${M + 32}px` }}>
       <div style={{ opacity: tile, transform: `scale(${0.92 + 0.08 * tile})`, transformOrigin: "left center" }}>
         <Wordmark height={150} tile={color.paper} stroke={color.canvas} text={color.paper} draw={draw} textOpacity={word} />
       </div>
-      <div style={{ ...headline, ...lift(line), fontSize: 50, lineHeight: 1.14, fontWeight: 500, letterSpacing: "-0.015em", marginTop: 72, maxWidth: 920, textWrap: "wrap" }}>
+      <div style={{ ...headline, ...lift(line), fontSize: 50, lineHeight: 1.14, fontWeight: 500, letterSpacing: "-0.015em", marginTop: 64, maxWidth: 920, textWrap: "wrap" }}>
         {/* No-break spaces keep "Claude Code" and "No API key." whole, so the line breaks after "plan." */}
         Free. Runs on your Claude{" "}Code plan. No{" "}API{" "}key.
       </div>
-      <div style={{ ...commandChip, ...lift(chip), marginTop: 56, padding: "22px 28px", fontSize: 25 }}>{INSTALL}</div>
-      <div style={{ ...lift(repo), marginTop: 30, fontFamily: font.mono, fontSize: 30, color: color.dim }}>{REPO}</div>
+      {/* 26px is the widest the 55-character /plugin line runs inside the 920px column. */}
+      <Install path={INSTALL.terminal} primary labelSize={30} fontSize={46} padding="12px 30px" style={{ ...lift(terminal), marginTop: 64 }} />
+      <Install path={INSTALL.claudeCode} labelSize={30} fontSize={26} padding="18px 26px" style={{ ...lift(claudeCode), marginTop: 44 }} />
+      <div style={{ ...lift(links), marginTop: 48, fontFamily: font.mono, fontSize: 28, lineHeight: 1.5, color: color.dim }}>
+        <div>{REPO}</div>
+        <div>{NPM}</div>
+      </div>
     </AbsoluteFill>
   );
 };
