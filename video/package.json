@@ -2,7 +2,7 @@
   "name": "unramble-video",
   "private": true,
   "type": "module",
-  "description": "Remotion source for the unramble README demo, LinkedIn launch video and stills.",
+  "description": "Remotion source for the unramble README demo and social preview.",
   "license": "MIT",
   "scripts": {
     "studio": "remotion studio --ipv4 --port 3123",
@@ -10,8 +10,6 @@
     "render:demo": "remotion render src/index.ts Demo ../assets/demo.mp4 --codec=h264 --crf=18 --muted --concurrency=2",
     "render:gif": "sh scripts/make-gif.sh ../assets/demo.mp4 ../assets/demo.gif",
     "render:social": "remotion still src/index.ts SocialPreview ../assets/social-preview.png",
-    "render:linkedin": "mkdir -p \"${LAUNCH_DIR:-../../unramble-launch}\" && remotion render src/index.ts LinkedIn \"${LAUNCH_DIR:-../../unramble-launch}/linkedin.mp4\" --codec=h264 --crf=18 --muted --concurrency=2",
-    "render:cover": "mkdir -p \"${LAUNCH_DIR:-../../unramble-launch}\" && remotion still src/index.ts LinkedInCover \"${LAUNCH_DIR:-../../unramble-launch}/linkedin-cover.png\"",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -23,6 +21,6 @@
   },
   "devDependencies": {
     "@types/react": "19.3.0",
-    "typescript": "5.9.3"
+    "typescript": "7.0.2"
   }
 }
