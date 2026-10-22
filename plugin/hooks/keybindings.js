@@ -24,11 +24,7 @@ const EDITOR_CHORD = 'ctrl+x ctrl+e'
  */
 
 /** @type {KeybindingsFile} */
-const SKELETON = {
-  $schema: 'https://www.schemastore.org/claude-code-keybindings.json',
-  $docs: 'https://code.claude.com/docs/en/keybindings',
-  bindings: [],
-}
+const SKELETON = { bindings: [] }
 
 /** @param {KeybindingsFile} file @returns {KeybindingsFile} */
 const clone = file => JSON.parse(JSON.stringify(file))

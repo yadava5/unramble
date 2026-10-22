@@ -43,8 +43,6 @@ const CAPABILITIES = {
 const URLS = [
   'https://api.anthropic.com/v1/models?limit=100',
   'https://api.anthropic.com/v1/messages',
-  'https://www.schemastore.org/claude-code-keybindings.json',
-  'https://code.claude.com/docs/en/keybindings',
   'https://code.claude.com/docs/en/setup',
 ]
 
