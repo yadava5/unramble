@@ -36,6 +36,8 @@ jobs:
           package-manager-cache: false
       - name: Install Claude Code ${{ matrix.claude }}
         # An exact version, except the deliberate `latest` canary row (continue-on-error, read-only token).
+        # bash on every OS: PowerShell would read ${CLAUDE_VERSION} as its own, unset, variable.
+        shell: bash
         run: npm install --global "@anthropic-ai/claude-code@${CLAUDE_VERSION}" # zizmor: ignore[adhoc-packages]
         env:
           CLAUDE_VERSION: ${{ matrix.claude }}
