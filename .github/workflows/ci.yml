@@ -27,8 +27,8 @@ jobs:
             claude: latest
     continue-on-error: ${{ matrix.claude == 'latest' }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
       - name: Install Claude Code ${{ matrix.claude }}
@@ -57,8 +57,8 @@ jobs:
       UNRAMBLE_MARKETPLACE: ${{ github.workspace }}
       CLAUDE_CONFIG_DIR: ${{ github.workspace }}/../claude-config
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
       - run: npm install --global @anthropic-ai/claude-code@2.1.308
@@ -82,7 +82,7 @@ jobs:
   rules:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: The rules carry no built-in name list
         run: |
           if grep -niE 'names (you may hear|this user often says):[[:space:]]*[^[:space:](]' prompt/system.md; then
