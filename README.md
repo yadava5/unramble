@@ -121,8 +121,38 @@ call: ~3k tokens of rules (cached after the first rewrite) plus your words.
 The API engine exists for people who would rather pay a fraction of a cent per rewrite than
 spend plan usage. It stays off until you switch it on, the key lives in Claude Code's secure
 storage, and a failed API call never falls back to your plan. Read
-[docs/API-KEY.md](docs/API-KEY.md) — and the ~100 lines of
-[`hooks/engine.ts`](hooks/engine.ts) — before you paste a key in.
+[docs/API-KEY.md](docs/API-KEY.md), and `viaApi` in [`hooks/register.tsx`](hooks/register.tsx),
+before you paste a key in.
+
+## What it does on your machine
+
+Everything the plugin's hooks module ([`hooks/register.tsx`](hooks/register.tsx)) can reach:
+
+- **Sends**
+  - On Ctrl+G with the `plan` engine (the default): your draft, with pasted logs and code
+    masked out, plus the rules in [`prompt/system.md`](prompt/system.md), to the model through
+    Claude Code's own session (`$.model.complete`). Nothing else leaves your machine.
+  - With the opt-in `api` engine only: the same draft and rules to
+    `https://api.anthropic.com/v1/messages`, and a model-list request to
+    `https://api.anthropic.com/v1/models?limit=100` at most once a day, both with the API key
+    you saved in the plugin's settings. These are the only hosts it contacts.
+- **Writes**
+  - `keybindings.json` in your Claude Code config folder (`$CLAUDE_CONFIG_DIR`, else
+    `~/.claude`), only when you run `/unramble setup`: it adds the two Ctrl+G bindings and
+    keeps your original file beside it as `keybindings.json.unramble-backup`. It is a settings
+    file, and that is the only file the plugin writes.
+  - Your prompt box, only when you press Ctrl+G: the rewrite, or your original back.
+- **Reads**: its own `prompt/system.md`; `keybindings.json` (to know whether Ctrl+G is bound);
+  the environment variables `CLAUDE_CONFIG_DIR`, `HOME` and `USERPROFILE` to find that folder.
+- **Hooks**
+  - `session.start`: registers `/unramble` and checks whether Ctrl+G is bound; if not, shows
+    one toast saying to run `/unramble setup`.
+  - `command.run` (`/unramble`): runs `setup` or `status`.
+  - `prompt.change` and `prompt.edit`: note whether the box holds a draft and what a paste chip
+    stands for, so the band and the rewrite see your words. They change nothing.
+  - `prompt.submit`: forgets the draft once you send it. It never changes or blocks a prompt.
+  - `ui.render` (above the prompt): draws the `⌃G refine` band.
+- **Runs**: no commands and no processes. Adds one slash command, `/unramble`.
 
 ## Settings
 

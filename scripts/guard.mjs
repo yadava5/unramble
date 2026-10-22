@@ -19,17 +19,17 @@ const SKIP_PATHS = ['.claude-plugin/types/']
 
 /** The code that ships: the plugin's hooks and the npx installer. */
 const RUNTIME = /^(hooks\/.+\.(ts|tsx|js|json)|cli\/unramble\.mjs)$/
-const HOOK_FILES = ['hooks/engine.ts', 'hooks/hooks.json', 'hooks/keybindings.js', 'hooks/refine.ts', 'hooks/register.tsx']
+const HOOK_FILES = ['hooks/hooks.json', 'hooks/keybindings.js', 'hooks/refine.ts', 'hooks/register.tsx']
 
 /** Engine capabilities (`$.noun`) each runtime file may use. */
 const CAPABILITIES = {
-  'hooks/engine.ts': ['clock', 'http', 'model', 'store'],
-  'hooks/register.tsx': ['clock', 'command', 'env', 'fs', 'plugin', 'prompt', 'ui'],
+  'hooks/register.tsx': ['clock', 'command', 'env', 'fs', 'http', 'model', 'plugin', 'prompt', 'store', 'ui'],
 }
 
 /** Every URL the shipped code may contain. The only host it talks to is the Anthropic API. */
 const URLS = [
-  'https://api.anthropic.com/v1',
+  'https://api.anthropic.com/v1/models?limit=100',
+  'https://api.anthropic.com/v1/messages',
   'https://www.schemastore.org/claude-code-keybindings.json',
   'https://code.claude.com/docs/en/keybindings',
   'https://code.claude.com/docs/en/setup',

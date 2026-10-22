@@ -27,8 +27,9 @@ Set **Engine** to `api` and paste the key into **Anthropic API key**. Or in a se
 - If the API call fails (bad key, no credit, network), your draft stays as it was and a toast
   says why. It does **not** fall back to your plan.
 
-That is all of it: [`hooks/engine.ts`](../hooks/engine.ts) is about 100 lines. Read it before
-you paste a key into anything, this included.
+That is all of it: `viaApi` and `apiModel` in [`hooks/register.tsx`](../hooks/register.tsx),
+about 50 lines, with both addresses written out at the call. Read them before you paste a key
+into anything, this included.
 
 ## Turn it off
 
