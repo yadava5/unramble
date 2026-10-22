@@ -34,7 +34,15 @@ lost. Ctrl+G again puts your original back.
 
 ## Install
 
-In Claude Code:
+Pick one. Both install the same plugin and bind Ctrl+G.
+
+**A. In your terminal** (zsh, bash, PowerShell — not inside Claude Code; needs Node 18+):
+
+```sh
+npx github:yadava5/unramble
+```
+
+**B. Inside Claude Code** — start `claude`, then type these at its `❯` prompt, one at a time:
 
 ```text
 /plugin install unramble --marketplace yadava5/unramble
@@ -44,14 +52,9 @@ In Claude Code:
 Answer `y` to add the marketplace and pick a scope (user is the default). `setup` binds Ctrl+G;
 it keeps a backup of your `keybindings.json` and never overwrites a key you bound yourself.
 
-Or from a shell, both steps at once (needs Node 18+):
-
-```sh
-npx github:yadava5/unramble
-```
-
-Start a new session, say or type a prompt, press **Ctrl+G**. Built and tested on Claude Code
-**2.1.308**; see [Where it is tested](#where-it-is-tested).
+Then quit Claude Code and start a new session (`claude`), say or type a prompt, and press
+**Ctrl+G**. Built and tested on Claude Code **2.1.308**; see
+[Where it is tested](#where-it-is-tested).
 
 ## What it does
 
@@ -147,17 +150,20 @@ two ways, so both were tried with a real keypress:
 |---|---|---|
 | kitty, macOS | kitty keyboard protocol | rewrite, restore, cancel, `/unramble status` ✓ |
 | Terminal.app, macOS | legacy `0x07` | rewrite and restore ✓ |
+| Ghostty 1.3, macOS | not measured | rewrite and restore ✓ |
+| VS Code terminal, macOS | not measured | rewrite and restore ✓ (Ctrl+G reaches Claude Code, not VS Code's *Go to Line*) |
+| Cursor terminal, macOS | not measured | rewrite and restore ✓ |
 | Linux (Debian, tmux) | legacy `0x07` | key reaches the plugin and the model call goes out ✓ |
 | Windows, Linux, macOS (CI) | — | install, Ctrl+G binding, uninstall and all tests, every push |
 
-Not yet tried by hand: Ghostty, iTerm2, Windows Terminal, and the terminals inside VS Code,
-Cursor or Kiro. They send one of the two encodings above, so they should behave the same; if
-one does not, please [open an issue](https://github.com/yadava5/unramble/issues/new/choose).
+Not yet tried by hand: iTerm2, Windows Terminal, and Kiro's terminal (Kiro is built on the same
+editor as VS Code and Cursor). If one does not work, please
+[open an issue](https://github.com/yadava5/unramble/issues/new/choose).
 
 ## Limits
 
 - **Terminal UI only.** The Ctrl+G chord reaches plugins in Claude Code's terminal interface
-  (`claude` run in a terminal, which should include one inside an IDE). The VS Code
+  (`claude` run in a terminal, including the one inside VS Code or Cursor). The VS Code
   extension's own chat panel and the desktop app are not supported.
 - **A short window can hide the band.** In an 80×24 window with a tall status line, Claude Code
   may not draw the `⌃G refine` row; Ctrl+G still works.
