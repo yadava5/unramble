@@ -55,7 +55,9 @@ Answer `y` to add the marketplace and pick a scope (user is the default). `setup
 it keeps a backup of your `keybindings.json` and never overwrites a key you bound yourself.
 
 Then quit Claude Code and start a new session (`claude`), say or type a prompt, and press
-**Ctrl+G**. Built and tested on Claude Code **2.1.308**; see
+**Ctrl+G**. Works with Claude Code 2.1.308 and every release after it: CI tests the newest
+Claude Code every day on Linux, macOS and Windows. It always uses the newest Sonnet or Opus,
+because it asks for the model by family, never by version. See
 [Where it is tested](#where-it-is-tested).
 
 ## What it does
@@ -173,13 +175,23 @@ editor as VS Code and Cursor). If one does not work, please
 - **A short window can hide the band.** In an 80×24 window with a tall status line, Claude Code
   may not draw the `⌃G refine` row; Ctrl+G still works.
 - **Long pastes stay as chips.** When a dictation app pastes a long block, Claude Code folds it
-  into a `[Pasted text #N]` chip that plugins cannot read in 2.1.308, so that text is kept as
+  into a `[Pasted text #N]` chip that plugins cannot read (as of 2.1.308), so that text is kept as
   is. Claude Code's built-in voice input, macOS Dictation and typing all work fully.
 - **Garbled speech stays garbled.** If the transcription is wrong in a way context cannot fix
   ("Apple ID" for a project name), the rewrite keeps it as heard rather than guess. Add the
   name to *Names you often say*.
-- **The plugin API is early access.** CI runs the latest Claude Code weekly to catch a release
-  that moves it.
+- **The plugin API is early access.** CI runs the newest Claude Code every day to catch a
+  release that moves it.
+
+## Update
+
+```sh
+npx unramble update
+```
+
+Or have Claude Code keep it current: in `/plugin`, open the `unramble` marketplace and turn on
+auto-update. Every change reaches `main` only through a reviewed pull request, so that is
+what auto-update follows.
 
 ## Uninstall
 

@@ -194,12 +194,14 @@ export const register: Register = (on, options) => {
       description: 'Ctrl+G prompt cleanup: `setup` binds the key, `status` shows engine, model and key binding',
       argumentHint: 'setup | status',
     })
+    let bound = false
     try {
       const found = await readKeybindings($)
-      await update($, isKeyBound, () => (found ? isBound(parse(found.text)) : false))
-    } catch {
-      await update($, isKeyBound, () => false)
-    }
+      bound = found ? isBound(parse(found.text)) : false
+    } catch {}
+    await update($, isKeyBound, () => bound)
+    // installed from /plugin or a link, nothing has bound the key yet: say the one step left
+    if (!bound) $.ui.toast('unramble is installed — run /unramble setup once to bind Ctrl+G')
     return next(e)
   })
 

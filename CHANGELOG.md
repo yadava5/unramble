@@ -13,7 +13,11 @@ Security hardening after an independent review.
   never picked up on Windows; refuses a marketplace override that could reach the shell; keeps
   your original `keybindings.json` backup instead of replacing it on a reinstall.
 - `/unramble setup` refuses to write when it cannot find an absolute config folder; the model
-  setting accepts only `sonnet` or `opus`.
+  setting accepts only `sonnet` or `opus` (always the newest of that family).
+- A session where Ctrl+G is not bound yet says so once: run `/unramble setup`.
+- `npx unramble update` pulls the newest version.
+- CI tests the oldest supported Claude Code (2.1.308) and the newest release, both required,
+  on Linux, macOS and Windows, every day.
 - Repository: a guard in CI fails any change that widens what the shipped code can reach;
   actions pinned to commits; zizmor, dependency review and CodeQL; releases publish only from
   a maintainer-approved tag on `main`.

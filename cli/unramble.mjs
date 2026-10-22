@@ -1,8 +1,9 @@
 #!/usr/bin/env node
-// npx unramble [install | uninstall | status] — sets the plugin up in one paste.
+// npx unramble [install | update | uninstall | status] — sets the plugin up in one paste.
 //
 // install:   claude plugin install unramble --marketplace yadava5/unramble, then binds Ctrl+G
 //            in keybindings.json (a backup is kept beside it).
+// update:    pulls the newest unramble from its marketplace.
 // uninstall: removes the plugin and takes back only the keybindings install added.
 // status:    shows whether the plugin is installed and Ctrl+G is bound.
 //
@@ -111,6 +112,14 @@ function uninstall() {
   say(removed ? '✓ unramble is uninstalled' : '! The plugin was not installed (or the uninstall failed); see above.')
 }
 
+function update() {
+  claude(['plugin', 'marketplace', 'update', PLUGIN], { quiet: true })
+  if (!claude(['plugin', 'update', `${PLUGIN}@${PLUGIN}`]).ok) {
+    fail('the update did not finish; is unramble installed? Try: npx unramble')
+  }
+  say('✓ unramble is up to date. Start a new Claude Code session to load it.')
+}
+
 function status() {
   const listed = claude(['plugin', 'list'], { quiet: true })
   const installed = new RegExp(`\\b${PLUGIN}@`).test(listed.out)
@@ -119,9 +128,9 @@ function status() {
 }
 
 const command = process.argv[2] ?? 'install'
-const commands = { install, uninstall, status }
+const commands = { install, update, uninstall, status }
 if (command === '--help' || command === '-h' || !(command in commands)) {
-  say('Usage: npx unramble [install | uninstall | status]')
+  say('Usage: npx unramble [install | update | uninstall | status]')
   process.exit(command in commands || command.startsWith('-') ? 0 : 1)
 }
 commands[command]()

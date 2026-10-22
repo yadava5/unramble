@@ -25,7 +25,7 @@ const BAND = {
 const ROUGH = 'okay so um can you look at the auth handler, uh no wait, the session middleware in src/session.ts'
 const CLEAN = 'Look at the session middleware in `src/session.ts`.'
 
-function engine(on: On, reply: (prompt: string) => string) {
+function engine(on: On, reply: (prompt: string) => string, home: { dir?: string; keybindings?: string } = {}) {
   const world = { box: ROUGH, toasts: [] as string[], asked: [] as { system?: string; prompt: string }[] }
   mock.clock(on)
   on('prompt.change', (_, e) => ({ text: e.text }))
@@ -39,9 +39,12 @@ function engine(on: On, reply: (prompt: string) => string) {
     const usage = { input_tokens: 1, output_tokens: 1, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 }
     return { value: { isAnswered: true, text: reply(e.prompt), usage } }
   })
-  on('fs.read', () => ({ value: 'RULES' }))
-  on('fs.exists', () => ({ value: false }))
-  on('env.get', () => ({ value: undefined }))
+  const isKeys = (path: string) => path.endsWith('/keybindings.json')
+  on('fs.read', (_, e) => ({ value: isKeys(e.path) ? (home.keybindings ?? '') : 'RULES' }))
+  on('fs.exists', (_, e) => ({ value: isKeys(e.path) && home.keybindings !== undefined }))
+  on('env.get', (_, e) => ({ value: e.name === 'HOME' ? home.dir : undefined }))
+  on('command.register', (_, e) => ({ value: { command: e.name } }))
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
   on('ui.toast', (_, e) => {
     world.toasts.push(e.text)
     return { value: undefined }
@@ -130,4 +133,22 @@ test('two words draw no band', async ($, on) => {
   const ui = await $.ui.mount(BAND)
   expect(await ui.find({ type: 'Button' })).toBe(undefined)
   await ui.unmount()
+})
+
+test('a session with Ctrl+G not bound yet says the one step left', async ($, on) => {
+  const world = engine(on, () => CLEAN, { dir: '/home/t' })
+  await $.session.start({ cwd: '/home/t', surface: 'terminal', isInteractive: true })
+  expect(world.toasts).toEqual(['unramble is installed — run /unramble setup once to bind Ctrl+G'])
+})
+
+test('a session with Ctrl+G bound starts quietly', async ($, on) => {
+  const keybindings = JSON.stringify({
+    bindings: [
+      { context: 'Global', bindings: { 'ctrl+g': 'app:cycleDiffBase' } },
+      { context: 'Chat', bindings: { 'ctrl+g': null } },
+    ],
+  })
+  const world = engine(on, () => CLEAN, { dir: '/home/t', keybindings })
+  await $.session.start({ cwd: '/home/t', surface: 'terminal', isInteractive: true })
+  expect(world.toasts).toEqual([])
 })

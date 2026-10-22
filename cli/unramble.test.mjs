@@ -86,6 +86,14 @@ test('a chord bound to something else is left alone', () => {
   assert.equal(existsSync(join(s.config, 'keybindings.json.unramble-backup')), false)
 })
 
+test('update refreshes the marketplace, then the plugin, and touches no keybindings', () => {
+  const s = sandbox(null)
+  const r = s.run('update')
+  assert.equal(r.status, 0, r.stderr)
+  assert.deepEqual(s.calls(), ['plugin marketplace update unramble', 'plugin update unramble@unramble'])
+  assert.equal(existsSync(join(s.config, 'keybindings.json')), false)
+})
+
 test('the first backup is the person’s own file and survives a reinstall', () => {
   const mine = { bindings: [{ context: 'Global', bindings: { 'ctrl+t': 'app:toggleTodos' } }] }
   const s = sandbox(mine)
