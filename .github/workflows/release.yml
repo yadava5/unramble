@@ -1,0 +1,32 @@
+name: release
+
+# Pushing a tag vX.Y.Z publishes the installer to npm through trusted publishing: no token is
+# stored anywhere, and npm attaches a provenance statement linking the package to this
+# workflow run and commit (check it with `npm audit signatures`).
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+  id-token: write # the OIDC token npm exchanges for a one-time publish credential
+
+jobs:
+  npm:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+      - name: Tag matches package.json
+        run: test "v$(node -p 'require("./package.json").version')" = "$GITHUB_REF_NAME"
+      - name: npm with trusted publishing (11.5.1 or newer)
+        run: npm install --global npm@11
+      - run: npm install --global @anthropic-ai/claude-code@2.1.308
+      - name: Tests
+        timeout-minutes: 5
+        run: npm test
+      - run: npm publish --access public

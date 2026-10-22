@@ -26,6 +26,16 @@ npx -p typescript tsc -p .  # type-check (after one --plugin-dir load)
 CI runs the same on the pinned Claude Code version and, as a non-blocking canary, on the
 latest release: the plugin API is early access and can move.
 
+## Releasing
+
+The plugin ships from this repository's default branch; npm carries only the installer
+(`cli/unramble.mjs` and the keybinding merge it shares with the plugin).
+
+1. Bump `version` in `package.json` and `.claude-plugin/plugin.json`, and add a CHANGELOG entry.
+2. Tag and push: `git tag v1.2.3 && git push origin v1.2.3`.
+3. `.github/workflows/release.yml` runs the tests and publishes to npm through trusted
+   publishing, with provenance. No npm token exists anywhere.
+
 ## Changing the rules
 
 `prompt/system.md` decides every rewrite. A change there needs numbers: run
