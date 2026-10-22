@@ -1,0 +1,34 @@
+name: A rewrite changed my meaning
+description: unramble dropped, added or changed something you said
+labels: [rewrite-quality]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        These reports are how the rules get better. Remove anything private before pasting.
+  - type: textarea
+    id: draft
+    attributes:
+      label: What you said (the draft)
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: rewrite
+    attributes:
+      label: What unramble wrote
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: wrong
+    attributes:
+      label: What is wrong with it
+      description: Dropped a request, added something, kept a cancelled idea, answered your question…
+    validations:
+      required: true
+  - type: input
+    id: setup
+    attributes:
+      label: Engine and model
+      placeholder: plan / sonnet

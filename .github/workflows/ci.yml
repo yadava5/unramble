@@ -1,0 +1,91 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "17 6 * * 1" # weekly: catch a Claude Code release that moves the plugin API
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: test · ${{ matrix.os }} · Claude Code ${{ matrix.claude }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        claude: ["2.1.308"]
+        include:
+          # The plugin API is early access: a new release breaking it shows up here without
+          # blocking a merge that passes on the pinned version.
+          - os: ubuntu-latest
+            claude: latest
+    continue-on-error: ${{ matrix.claude == 'latest' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Claude Code ${{ matrix.claude }}
+        run: npm install --global @anthropic-ai/claude-code@${{ matrix.claude }}
+      - name: Validate manifest and hooks
+        timeout-minutes: 3
+        run: claude plugin validate .
+      - name: Plugin tests (engine test host)
+        timeout-minutes: 3
+        run: claude plugin test .
+      - name: Installer tests
+        timeout-minutes: 3
+        run: node --test "cli/*.test.mjs"
+
+  install:
+    # The real thing on each OS: `npx`-style install from this checkout into a throwaway config
+    # folder, the plugin listed by Claude Code, Ctrl+G bound, then uninstall taking it back.
+    name: install · ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    env:
+      UNRAMBLE_MARKETPLACE: ${{ github.workspace }}
+      CLAUDE_CONFIG_DIR: ${{ github.workspace }}/../claude-config
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --global @anthropic-ai/claude-code@2.1.308
+      - name: Install
+        timeout-minutes: 5
+        run: node cli/unramble.mjs install
+      - name: Installed and bound
+        shell: bash
+        run: |
+          node cli/unramble.mjs status | tee status.txt
+          grep -q 'Plugin:  installed' status.txt
+          grep -q 'Ctrl+G:  bound' status.txt
+      - name: Uninstall takes it back
+        shell: bash
+        run: |
+          node cli/unramble.mjs uninstall
+          node cli/unramble.mjs status | tee status.txt
+          grep -q 'Plugin:  not installed' status.txt
+          grep -q 'Ctrl+G:  not bound' status.txt
+
+  rules:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: The rules carry no built-in name list
+        run: |
+          if grep -niE 'names (you may hear|this user often says):[[:space:]]*[^[:space:](]' prompt/system.md; then
+            echo "prompt/system.md hard-codes a name list; names belong in the vocabulary setting" >&2
+            exit 1
+          fi
