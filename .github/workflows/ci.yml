@@ -5,7 +5,7 @@ on:
     branches: [main]
   pull_request:
   schedule:
-    - cron: "17 6 * * 1" # weekly: catch a Claude Code release that moves the plugin API
+    - cron: "17 6 * * *" # daily: Claude Code ships often; a release that moves the plugin API shows up here
 
 permissions:
   contents: read
@@ -19,13 +19,9 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        claude: ["2.1.308"]
-        include:
-          # The plugin API is early access: a new release breaking it shows up here without
-          # blocking a merge that passes on the pinned version.
-          - os: ubuntu-latest
-            claude: latest
-    continue-on-error: ${{ matrix.claude == 'latest' }}
+        # The oldest Claude Code the plugin supports, and whatever is newest today. Both must pass:
+        # users run the latest release, so a release that breaks the plugin must turn CI red.
+        claude: ["2.1.308", latest]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -35,7 +31,7 @@ jobs:
           node-version: 22
           package-manager-cache: false
       - name: Install Claude Code ${{ matrix.claude }}
-        # An exact version, except the deliberate `latest` canary row (continue-on-error, read-only token).
+        # The oldest supported version, or the newest release (read-only token, no secrets).
         # bash on every OS: PowerShell would read ${CLAUDE_VERSION} as its own, unset, variable.
         shell: bash
         run: npm install --global "@anthropic-ai/claude-code@${CLAUDE_VERSION}" # zizmor: ignore[adhoc-packages]
@@ -72,7 +68,7 @@ jobs:
         with:
           node-version: 22
           package-manager-cache: false
-      - run: npm install --global @anthropic-ai/claude-code@2.1.308 # zizmor: ignore[adhoc-packages] exact version
+      - run: npm install --global @anthropic-ai/claude-code@latest # zizmor: ignore[adhoc-packages] what users run; read-only token
       - name: Install
         timeout-minutes: 5
         run: node cli/unramble.mjs install
