@@ -180,7 +180,7 @@ export function systemPrompt(rules: string, vocabulary: string): string {
 
 /** The draft as the model sees it; a closing tag inside the draft cannot end the transcript early. */
 export const transcript = (masked: string) =>
-  `<transcript>\n${masked.replace(/<\/?transcript>/gi, t => t.replace('<', '‹'))}\n</transcript>`
+  `<transcript>\n${masked.replace(/<(\/?transcript>)/gi, '‹$1')}\n</transcript>`
 
 /** Claude Code's chip for a multi-line paste, as the box holds it: `[Pasted text #2 +4 lines]`. */
 export const PASTE_CHIP = /\[Pasted text #\d+[^\]]*\]/g

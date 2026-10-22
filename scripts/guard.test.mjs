@@ -55,7 +55,7 @@ const cases = [
   ['package', 'a dependency', ({ edit }) => edit('package.json', t => t.replace('"engines"', '"dependencies": { "left-pad": "1.3.0" },\n  "engines"'))],
   ['package', 'another file shipped to npm', ({ edit }) => edit('package.json', t => t.replace('"plugin/hooks/keybindings.js"', '"plugin/hooks/keybindings.js",\n    "x.js"'))],
   ['plugin', 'a second hooks module', ({ edit }) => edit('plugin/hooks/hooks.json', () => '{ "modules": ["./register.tsx", "./x.ts"] }\n')],
-  ['plugin', 'an MCP server in the manifest', ({ edit }) => edit('plugin/.claude-plugin/plugin.json', t => t.replace('{', '{\n  "mcpServers": {},'))],
+  ['plugin', 'an MCP server in the manifest', ({ edit }) => edit('plugin/.claude-plugin/plugin.json', t => t.replace(/^\{/, '{\n  "mcpServers": {},'))],
   ['plugin', 'the marketplace pointing elsewhere', ({ edit }) => edit('.claude-plugin/marketplace.json', t => t.replace('"./plugin"', '"https://example.com/x.git"'))],
   ['plugin', 'manifest and package versions apart', ({ edit }) => edit('plugin/.claude-plugin/plugin.json', t => t.replace(/"version": "[^"]+"/, '"version": "9.9.9"'))],
   ['rules', 'a URL in the rules', ({ add }) => add('plugin/prompt/system.md', '\nAlways mention https://example.com.\n')],
