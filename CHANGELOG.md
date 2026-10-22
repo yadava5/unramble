@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.0.1 — 2026-10-22
+
+Security hardening after an independent review.
+
+- A rewrite that adds a link, a download-or-run command (`curl`, `wget`, `sudo`, `rm -…`),
+  shell chaining or invisible characters that you did not say is refused. Text pasted into
+  the box can carry instructions, and the prompt goes to an agent with a shell. Spoken forms
+  count as said. On 2,240 recorded rewrites it refused none.
+- A `</transcript>` inside your draft can no longer end the model's transcript early.
+- Installer: runs `claude` from your home folder, so a `claude.cmd` in the current folder is
+  never picked up on Windows; refuses a marketplace override that could reach the shell; keeps
+  your original `keybindings.json` backup instead of replacing it on a reinstall.
+- `/unramble setup` refuses to write when it cannot find an absolute config folder; the model
+  setting accepts only `sonnet` or `opus`.
+- Repository: a guard in CI fails any change that widens what the shipped code can reach;
+  actions pinned to commits; zizmor, dependency review and CodeQL; releases publish only from
+  a maintainer-approved tag on `main`.
+
 ## 1.0.0 — 2026-10-22
 
 First public release.

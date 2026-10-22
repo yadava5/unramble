@@ -1,6 +1,6 @@
 {
   "name": "unramble",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Ctrl+G turns a rambling, dictated prompt into a clean, ordered one, in place, on your own Claude Code plan.",
   "keywords": [
     "claude-code",
@@ -30,7 +30,8 @@
     "node": ">=18"
   },
   "scripts": {
-    "test": "claude plugin validate . && claude plugin test . && node --test cli/*.test.mjs",
-    "test:cli": "node --test cli/*.test.mjs"
+    "test": "node scripts/guard.mjs && claude plugin validate . && claude plugin test . && node --test cli/*.test.mjs scripts/*.test.mjs",
+    "test:cli": "node --test cli/*.test.mjs",
+    "guard": "node scripts/guard.mjs"
   }
 }
