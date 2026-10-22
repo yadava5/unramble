@@ -121,16 +121,18 @@ call: ~3k tokens of rules (cached after the first rewrite) plus your words.
 The API engine exists for people who would rather pay a fraction of a cent per rewrite than
 spend plan usage. It stays off until you switch it on, the key lives in Claude Code's secure
 storage, and a failed API call never falls back to your plan. Read
-[docs/API-KEY.md](docs/API-KEY.md), and `viaApi` in [`hooks/register.tsx`](hooks/register.tsx),
+[docs/API-KEY.md](docs/API-KEY.md), and `viaApi` in [`plugin/hooks/register.tsx`](plugin/hooks/register.tsx),
 before you paste a key in.
 
 ## What it does on your machine
 
-Everything the plugin's hooks module ([`hooks/register.tsx`](hooks/register.tsx)) can reach:
+Everything the plugin's hooks module ([`plugin/hooks/register.tsx`](plugin/hooks/register.tsx))
+can reach. The plugin is the [`plugin/`](plugin/) folder, the only part of this repository
+that Claude Code installs:
 
 - **Sends**
   - On Ctrl+G with the `plan` engine (the default): your draft, with pasted logs and code
-    masked out, plus the rules in [`prompt/system.md`](prompt/system.md), to the model through
+    masked out, plus the rules in [`prompt/system.md`](plugin/prompt/system.md), to the model through
     Claude Code's own session (`$.model.complete`). Nothing else leaves your machine.
   - With the opt-in `api` engine only: the same draft and rules to
     `https://api.anthropic.com/v1/messages`, and a model-list request to

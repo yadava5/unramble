@@ -14,7 +14,7 @@ import { copyFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { isAbsolute, join, resolve } from 'node:path'
 
-import { isBound, parse, plan, serialize, unplan } from '../hooks/keybindings.js'
+import { isBound, parse, plan, serialize, unplan } from '../plugin/hooks/keybindings.js'
 
 // UNRAMBLE_MARKETPLACE points the installer at a fork or a local checkout (CI uses it). On
 // Windows the argument passes through cmd.exe, so only plain repo names and paths are taken.

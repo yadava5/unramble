@@ -24,13 +24,13 @@
   },
   "files": [
     "cli/unramble.mjs",
-    "hooks/keybindings.js"
+    "plugin/hooks/keybindings.js"
   ],
   "engines": {
     "node": ">=18"
   },
   "scripts": {
-    "test": "node scripts/guard.mjs && claude plugin validate . && claude plugin test . && node --test cli/*.test.mjs scripts/*.test.mjs",
+    "test": "node scripts/guard.mjs && claude plugin validate . && claude plugin validate plugin && claude plugin test plugin && node --test cli/*.test.mjs scripts/*.test.mjs",
     "test:cli": "node --test cli/*.test.mjs",
     "guard": "node scripts/guard.mjs"
   }

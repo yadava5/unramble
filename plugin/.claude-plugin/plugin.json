@@ -4,13 +4,10 @@
   "description": "Ctrl+G turns a rambling, dictated prompt into a clean, ordered one, in place, on your own Claude Code plan.",
   "author": { "name": "Ayush Yadav", "url": "https://github.com/yadava5" },
   "homepage": "https://yadava5.github.io/unramble/",
-  "documentationUrl": "https://github.com/yadava5/unramble#readme",
   "repository": "https://github.com/yadava5/unramble",
   "license": "MIT",
-  "privacyPolicyUrl": "https://github.com/yadava5/unramble/blob/main/PRIVACY.md",
   "keywords": ["dictation", "prompt", "voice", "rewrite", "keybinding"],
   "icon": "./assets/logo-512.png",
-  "types": "./types/index.d.ts",
   "userConfig": {
     "engine": {
       "type": "string",

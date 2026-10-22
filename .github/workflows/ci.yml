@@ -39,10 +39,10 @@ jobs:
           CLAUDE_VERSION: ${{ matrix.claude }}
       - name: Validate manifest and hooks
         timeout-minutes: 3
-        run: claude plugin validate .
+        run: claude plugin validate . && claude plugin validate plugin
       - name: Plugin tests (engine test host)
         timeout-minutes: 3
-        run: claude plugin test .
+        run: claude plugin test plugin
       - name: Installer and guard tests
         timeout-minutes: 3
         run: node --test "cli/*.test.mjs" "scripts/*.test.mjs"

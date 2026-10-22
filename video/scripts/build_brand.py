@@ -1,6 +1,6 @@
 """Build the unramble logo and wordmark SVGs from one geometry source.
 
-Writes ../assets/{logo,logo-dark,wordmark,wordmark-dark}.svg, ../assets/logo-512.png
+Writes ../assets/{logo,logo-dark,wordmark,wordmark-dark}.svg, ../plugin/assets/logo-512.png
 and src/brand-geometry.ts (the same paths, so the videos draw the identical mark).
 The wordmark is shaped with HarfBuzz (kerning on) and converted to outlines, so
 the SVGs carry no font dependency.
@@ -102,7 +102,7 @@ def main() -> None:
         )
 
     subprocess.run(
-        ["rsvg-convert", "-w", "512", "-h", "512", str(ASSETS / "logo.svg"), "-o", str(ASSETS / "logo-512.png")],
+        ["rsvg-convert", "-w", "512", "-h", "512", str(ASSETS / "logo.svg"), "-o", str(VIDEO.parent / "plugin" / "assets" / "logo-512.png")],
         check=True,
     )
 

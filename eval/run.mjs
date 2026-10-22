@@ -14,7 +14,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { parseArgs } from 'node:util'
 
-import { check, mask, systemPrompt, transcript } from '../hooks/refine.ts'
+import { check, mask, systemPrompt, transcript } from '../plugin/hooks/refine.ts'
 
 const { values, positionals } = parseArgs({
   allowPositionals: true,
@@ -32,7 +32,7 @@ if (!positionals[0]) {
 }
 
 const here = new URL('.', import.meta.url)
-const rules = systemPrompt(readFileSync(new URL('../prompt/system.md', here), 'utf8'), values.vocabulary)
+const rules = systemPrompt(readFileSync(new URL('../plugin/prompt/system.md', here), 'utf8'), values.vocabulary)
 const rubric = readFileSync(new URL('rubric.md', here), 'utf8')
 const neutral = mkdtempSync(join(tmpdir(), 'unramble-eval-')) // no project CLAUDE.md or hooks load
 

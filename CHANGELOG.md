@@ -5,7 +5,12 @@
 - The band follows the box through `prompt.edit` alone; the `prompt.change` hook is gone, as
   Anthropic's plugin directory does not list that event yet. A prompt recalled from history,
   or a box you cleared, reaches the band at your next key.
-- A privacy policy, [PRIVACY.md](PRIVACY.md), named in the plugin manifest.
+- A privacy policy, [PRIVACY.md](PRIVACY.md), linked from the plugin's README.
+- The plugin moves into [`plugin/`](plugin/), so Claude Code installs only the plugin, not the
+  installer, docs, eval kit or video tooling. The marketplace entry points there; installing and
+  updating work as before. `plugin/README.md` is the plugin's own README, with examples and
+  troubleshooting.
+- The guard fails on any file in `plugin/` that is not on its list.
 
 ## 1.0.1 — 2026-10-22
 

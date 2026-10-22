@@ -10,7 +10,7 @@
   "plugins": [
     {
       "name": "unramble",
-      "source": "./",
+      "source": "./plugin",
       "description": "Ctrl+G turns a rambling, dictated prompt into a clean, ordered one, in place, on your own Claude Code plan."
     }
   ]

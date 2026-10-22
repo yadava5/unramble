@@ -2,7 +2,7 @@
 
 The numbers in [`docs/BENCHMARKS.md`](../docs/BENCHMARKS.md) come from this protocol. Run it on
 your own dictation before you trust the rules with it, or to check a change to
-[`prompt/system.md`](../prompt/system.md).
+[`plugin/prompt/system.md`](../plugin/prompt/system.md).
 
 1. Write a corpus, one JSON object per line. Real prompts you have said are the useful part;
    add `intent` when the speech is ambiguous and you know what you meant.

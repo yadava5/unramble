@@ -1,7 +1,7 @@
 # Benchmarks
 
 How faithful is a rewrite? This page is the measurement behind the rules in
-[`prompt/system.md`](../prompt/system.md) and the choice of default model. Every number
+[`plugin/prompt/system.md`](../plugin/prompt/system.md) and the choice of default model. Every number
 below was recomputed from the run files on 2026-10-22; where a figure comes only from a
 commit message (no run file kept), it says so.
 

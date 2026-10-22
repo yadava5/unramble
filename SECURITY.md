@@ -5,7 +5,9 @@
 It is a Claude Code plugin, so it runs with Claude Code's permissions on your machine. What it
 actually uses (from `claude plugin validate .`, which reads the module the way the engine does):
 
-- **Prompt box**: reads the draft and fills the rewrite, only when you press Ctrl+G.
+- **Prompt box**: sends the draft and fills the rewrite only when you press Ctrl+G. As you edit,
+  it sees the text only to count words for the band and to remember what a paste chip stands
+  for, and forgets both when you send.
 - **Model**: `$.model.complete` on your own session, or the Anthropic API if you opted in.
 - **Network**: `https://api.anthropic.com` only, and only on the opt-in API engine.
 - **Files**: reads its own `prompt/system.md`; reads and, on `/unramble setup`, writes
@@ -20,7 +22,7 @@ No telemetry, no logs of your prompts, nothing stored after a prompt is sent.
 
 ## What a rewrite may not do
 
-A rewrite replaces your draft only if it passes two checks in [`hooks/refine.ts`](hooks/refine.ts):
+A rewrite replaces your draft only if it passes two checks in [`plugin/hooks/refine.ts`](plugin/hooks/refine.ts):
 
 - **Nothing lost**: every path, flag, number, URL, `@`-reference and paste chip you said is
   still there (unless you corrected it on the spot).
@@ -43,14 +45,15 @@ Anyone can propose a change; only the maintainer can merge one or publish a rele
 - Every pull request runs [`scripts/guard.mjs`](scripts/guard.mjs), which fails on anything that
   widens what the shipped code can reach: a new network host, process, engine capability,
   dependency or install script, hidden or direction-changing Unicode (including the tag
-  characters that can hide instructions from a reviewer), a binary outside `assets/`, or a
-  GitHub Action not pinned to a commit. Each rule has a test that makes it fire.
+  characters that can hide instructions from a reviewer), a binary outside `assets/`, any file
+  in `plugin/` (what Claude Code installs) that is not on its list, or a GitHub Action not
+  pinned to a commit. Each rule has a test that makes it fire.
 - [zizmor](https://docs.zizmor.sh) audits the workflows, GitHub's dependency review blocks known
   vulnerable dependencies, and CodeQL scans the code.
 - A first-time contributor's CI run waits for the maintainer's approval, and runs from forks
   get a read-only token and no secrets.
 
-The guard is a tripwire, not a sandbox: review of every change to `hooks/`, `cli/`, `prompt/`
+The guard is a tripwire, not a sandbox: review of every change to `plugin/`, `cli/`, `scripts/`
 and `.github/` is the real gate, and CODEOWNERS makes that review mandatory.
 
 ## Reporting a vulnerability

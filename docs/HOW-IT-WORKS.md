@@ -31,10 +31,10 @@ sequenceDiagram
 
 | File | Job |
 |---|---|
-| [`hooks/register.tsx`](../hooks/register.tsx) | The band above the prompt, Ctrl+G, restore and cancel, `/unramble setup` and `status`, and the two ways to reach a model: `plan` (`$.model.complete`) and opt-in `api` (`$.http.fetch`) |
-| [`hooks/refine.ts`](../hooks/refine.ts) | Pure text work: skip rules, paste masking, the value guard, tag unwrapping. No `$`, fully unit-tested |
-| [`hooks/keybindings.js`](../hooks/keybindings.js) | Binding Ctrl+G safely; shared by the plugin and the `npx` installer |
-| [`prompt/system.md`](../prompt/system.md) | The rewrite rules, read once per session |
+| [`plugin/hooks/register.tsx`](../plugin/hooks/register.tsx) | The band above the prompt, Ctrl+G, restore and cancel, `/unramble setup` and `status`, and the two ways to reach a model: `plan` (`$.model.complete`) and opt-in `api` (`$.http.fetch`) |
+| [`plugin/hooks/refine.ts`](../plugin/hooks/refine.ts) | Pure text work: skip rules, paste masking, the value guard, tag unwrapping. No `$`, fully unit-tested |
+| [`plugin/hooks/keybindings.js`](../plugin/hooks/keybindings.js) | Binding Ctrl+G safely; shared by the plugin and the `npx` installer |
+| [`plugin/prompt/system.md`](../plugin/prompt/system.md) | The rewrite rules, read once per session |
 | [`cli/unramble.mjs`](../cli/unramble.mjs) | `npx` installer: plugin install plus key binding, and uninstall |
 
 ## Why Ctrl+G needs a keybinding

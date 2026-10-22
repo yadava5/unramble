@@ -15,15 +15,28 @@ import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join, relative, sep } from 'node:path'
 
 const SKIP_DIRS = new Set(['.git', 'node_modules', 'out'])
-const SKIP_PATHS = ['.claude-plugin/types/']
+const SKIP_PATHS = ['.claude-plugin/types/', 'plugin/.claude-plugin/types/']
 
 /** The code that ships: the plugin's hooks and the npx installer. */
-const RUNTIME = /^(hooks\/.+\.(ts|tsx|js|json)|cli\/unramble\.mjs)$/
-const HOOK_FILES = ['hooks/hooks.json', 'hooks/keybindings.js', 'hooks/refine.ts', 'hooks/register.tsx']
+const RUNTIME = /^(plugin\/hooks\/.+\.(ts|tsx|js|json)|cli\/unramble\.mjs)$/
+const HOOK_FILES = ['plugin/hooks/hooks.json', 'plugin/hooks/keybindings.js', 'plugin/hooks/refine.ts', 'plugin/hooks/register.tsx']
+
+/** Everything in plugin/, which the marketplace copies onto every user's machine. */
+const PLUGIN_FILES = [
+  ...HOOK_FILES,
+  'plugin/.claude-plugin/plugin.json',
+  'plugin/LICENSE',
+  'plugin/README.md',
+  'plugin/assets/logo-512.png',
+  'plugin/prompt/system.md',
+  'plugin/tsconfig.json',
+  'plugin/types/index.d.ts',
+]
+const PLUGIN_TESTS = /^plugin\/tests\/[\w.-]+\.test\.tsx?$/
 
 /** Engine capabilities (`$.noun`) each runtime file may use. */
 const CAPABILITIES = {
-  'hooks/register.tsx': ['clock', 'command', 'env', 'fs', 'http', 'model', 'plugin', 'prompt', 'store', 'ui'],
+  'plugin/hooks/register.tsx': ['clock', 'command', 'env', 'fs', 'http', 'model', 'plugin', 'prompt', 'store', 'ui'],
 }
 
 /** Every URL the shipped code may contain. The only host it talks to is the Anthropic API. */
@@ -36,7 +49,7 @@ const URLS = [
 ]
 
 /** Binary files are allowed only as these, only here. */
-const BINARIES = [/^assets\/[\w.-]+\.(png|gif|mp4)$/, /^video\/public\/fonts\/[\w.-]+\.ttf$/]
+const BINARIES = [/^assets\/[\w.-]+\.(png|gif|mp4)$/, /^plugin\/assets\/logo-512\.png$/, /^video\/public\/fonts\/[\w.-]+\.ttf$/]
 
 // Bidi controls (Trojan Source), zero-width and word-joiner characters, BOMs past the start of a
 // file, and the Unicode tag block, which can smuggle instructions to a model that a reviewer
@@ -105,9 +118,12 @@ export function guard(root) {
     if (at) fail('hidden-unicode', `${f}:${at}`, 'invisible or direction-changing characters')
   }
 
+  for (const f of files.filter(f => f.startsWith('plugin/'))) {
+    if (!PLUGIN_FILES.includes(f) && !PLUGIN_TESTS.test(f)) fail('runtime-file', f, 'a new file in plugin/ ships to every user; add it to PLUGIN_FILES after review')
+  }
+
   for (const f of files.filter(f => RUNTIME.test(f))) {
     const code = read(f).toString('utf8')
-    if (f.startsWith('hooks/') && !HOOK_FILES.includes(f)) fail('runtime-file', f, 'a new file in hooks/ ships to every user; add it to HOOK_FILES after review')
     for (const [re, what] of DANGEROUS) if (re.test(code)) fail('dangerous-code', f, what)
     for (const url of code.match(/https?:\/\/[^\s'"`)<>]+/g) ?? []) {
       if (!URLS.includes(url.replace(/[.,;]+$/, ''))) fail('network-host', f, `URL not on the list: ${url}`)
@@ -136,22 +152,22 @@ export function guard(root) {
     if (pkg[k] && Object.keys(pkg[k]).length) fail('package', 'package.json', `${k}: the installer has no dependencies`)
   }
   for (const s of Object.keys(pkg.scripts ?? {})) if (LIFECYCLE.test(s)) fail('package', 'package.json', `lifecycle script "${s}" would run on install or publish`)
-  if (JSON.stringify(pkg.files) !== JSON.stringify(['cli/unramble.mjs', 'hooks/keybindings.js'])) fail('package', 'package.json', 'files must stay the installer and the keybinding merge')
+  if (JSON.stringify(pkg.files) !== JSON.stringify(['cli/unramble.mjs', 'plugin/hooks/keybindings.js'])) fail('package', 'package.json', 'files must stay the installer and the keybinding merge')
   if (JSON.stringify(pkg.bin) !== JSON.stringify({ unramble: 'cli/unramble.mjs' })) fail('package', 'package.json', 'bin must stay unramble → cli/unramble.mjs')
 
-  const hooks = JSON.parse(read('hooks/hooks.json').toString('utf8'))
-  if (JSON.stringify(hooks) !== JSON.stringify({ modules: ['./register.tsx'] })) fail('plugin', 'hooks/hooks.json', 'the hooks module list changed')
-  const manifest = JSON.parse(read('.claude-plugin/plugin.json').toString('utf8'))
+  const hooks = JSON.parse(read('plugin/hooks/hooks.json').toString('utf8'))
+  if (JSON.stringify(hooks) !== JSON.stringify({ modules: ['./register.tsx'] })) fail('plugin', 'plugin/hooks/hooks.json', 'the hooks module list changed')
+  const manifest = JSON.parse(read('plugin/.claude-plugin/plugin.json').toString('utf8'))
   for (const k of ['mcpServers', 'lspServers', 'commands', 'agents', 'skills', 'hooks', 'outputStyles']) {
-    if (k in manifest) fail('plugin', '.claude-plugin/plugin.json', `declares ${k}`)
+    if (k in manifest) fail('plugin', 'plugin/.claude-plugin/plugin.json', `declares ${k}`)
   }
   const market = JSON.parse(read('.claude-plugin/marketplace.json').toString('utf8'))
-  if (market.plugins?.some(p => p.source !== './')) fail('plugin', '.claude-plugin/marketplace.json', 'a plugin source points outside this repository')
-  if (manifest.version !== pkg.version) fail('plugin', '.claude-plugin/plugin.json', `version ${manifest.version} differs from package.json ${pkg.version}`)
+  if (market.plugins?.some(p => p.source !== './plugin')) fail('plugin', '.claude-plugin/marketplace.json', 'a plugin source points outside plugin/')
+  if (manifest.version !== pkg.version) fail('plugin', 'plugin/.claude-plugin/plugin.json', `version ${manifest.version} differs from package.json ${pkg.version}`)
 
-  const rules = read('prompt/system.md').toString('utf8')
-  if (/https?:\/\//.test(rules)) fail('rules', 'prompt/system.md', 'the rules contain a URL')
-  if (/names (you may hear|this user often says):[ \t]*[^\s(]/i.test(rules)) fail('rules', 'prompt/system.md', 'hard-codes a name list; names belong in the vocabulary setting')
+  const rules = read('plugin/prompt/system.md').toString('utf8')
+  if (/https?:\/\//.test(rules)) fail('rules', 'plugin/prompt/system.md', 'the rules contain a URL')
+  if (/names (you may hear|this user often says):[ \t]*[^\s(]/i.test(rules)) fail('rules', 'plugin/prompt/system.md', 'hard-codes a name list; names belong in the vocabulary setting')
 
   for (const f of files.filter(f => /^\.github\/workflows\/.+\.ya?ml$/.test(f))) {
     const wf = read(f).toString('utf8')

@@ -2,9 +2,8 @@
 * @yadava5
 
 # Named again so it is plain which paths ship to users or control releases.
-/hooks/ @yadava5
+/plugin/ @yadava5
 /cli/ @yadava5
-/prompt/ @yadava5
 /scripts/ @yadava5
 /site/ @yadava5
 /.github/ @yadava5

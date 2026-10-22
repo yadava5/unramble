@@ -36,7 +36,7 @@ jobs:
       - name: The tag matches package.json and plugin.json
         run: |
           pkg="v$(node -p 'require("./package.json").version')"
-          plugin="v$(node -p 'require("./.claude-plugin/plugin.json").version')"
+          plugin="v$(node -p 'require("./plugin/.claude-plugin/plugin.json").version')"
           test "$pkg" = "$GITHUB_REF_NAME" && test "$plugin" = "$GITHUB_REF_NAME"
       - run: npm install --global @anthropic-ai/claude-code@latest # zizmor: ignore[adhoc-packages] what users run; no OIDC in this job
       - name: Tests and guard

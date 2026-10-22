@@ -16,7 +16,7 @@ Rendering needs `ffmpeg` (for the GIF). Rebuilding the logo needs Python 3 with
 ## Render
 
 ```sh
-npm run brand            # assets/logo*.svg, wordmark*.svg, logo-512.png, src/brand-geometry.ts
+npm run brand            # assets/logo*.svg, wordmark*.svg, ../plugin/assets/logo-512.png, src/brand-geometry.ts
 npm run render:demo      # assets/demo.mp4
 npm run render:gif       # assets/demo.gif (from demo.mp4)
 npm run render:social    # assets/social-preview.png
