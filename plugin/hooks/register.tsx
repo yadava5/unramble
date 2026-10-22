@@ -151,14 +151,14 @@ async function refine($: EngineInterface, s: Settings) {
     await $.prompt.fill({ text: await read($, original), mode: 'replace' })
     await update($, rewrite, () => '')
     await update($, isRefined, () => false)
-    $.ui.toast('unramble: your original is back')
+    $.ui.toast('your original is back')
     return
   }
   const draft = (await $.prompt.read()).text
   const spoken = expandSpoken(draft, await read($, pastes)).trim()
   const skip = skipReason(spoken)
   if (skip) {
-    if (wordCount(spoken) >= MIN_WORDS) $.ui.toast(`unramble: ${skip}`)
+    if (wordCount(spoken) >= MIN_WORDS) $.ui.toast(skip)
     return
   }
 
@@ -171,21 +171,21 @@ async function refine($: EngineInterface, s: Settings) {
     const system = systemPrompt(await rules($), s.vocabulary)
     const out = await viaPlan($, system, transcript(masked), s.model, controller.signal)
     if (controller.signal.aborted) {
-      $.ui.toast('unramble: cancelled — your text is unchanged')
+      $.ui.toast('cancelled — your text is unchanged')
       return
     }
     if (!out.ok) {
-      $.ui.toast(`unramble: ${out.why} — your text is unchanged`)
+      $.ui.toast(`${out.why} — your text is unchanged`)
       return
     }
     const checked = check(spoken, out.text, blocks)
     if (!checked.ok) {
-      $.ui.toast(`unramble: kept your text — ${checked.why}`)
+      $.ui.toast(`kept your text — ${checked.why}`)
       return
     }
     // Typed or spoke more while the rewrite ran: the person's text wins.
     if ((await $.prompt.read()).text !== draft) {
-      $.ui.toast('unramble: you edited while it ran — kept your text')
+      $.ui.toast('you edited while it ran — kept your text')
       return
     }
     await update($, original, () => draft)
@@ -193,9 +193,9 @@ async function refine($: EngineInterface, s: Settings) {
     await $.prompt.fill({ text: checked.text, mode: 'replace' })
     await update($, isRefined, () => true)
     const secs = ((await $.clock.now()) - startedAt) / 1000
-    $.ui.toast(`unramble: done in ${secs.toFixed(1)}s with ${out.via} · ⌃G again restores your original`)
+    $.ui.toast(`done in ${secs.toFixed(1)}s with ${out.via} · ⌃G again restores your original`)
   } catch (err) {
-    $.ui.toast(`unramble: failed (${String(err).slice(0, 80)}) — your text is unchanged`)
+    $.ui.toast(`failed (${String(err).slice(0, 80)}) — your text is unchanged`)
   } finally {
     if (inFlight === controller) inFlight = null
     await update($, isBusy, () => false)
@@ -224,7 +224,7 @@ export const register: Register = (on, options) => {
     } catch {}
     await update($, isKeyBound, () => bound)
     // installed from /plugin or a link, nothing has bound the key yet: say the one step left
-    if (!bound) $.ui.toast('unramble is installed — run /unramble setup once to bind Ctrl+G')
+    if (!bound) $.ui.toast('installed — run /unramble setup once to bind Ctrl+G')
     return next(e)
   })
 
@@ -233,7 +233,7 @@ export const register: Register = (on, options) => {
     if (arg === 'setup') return { text: await setup($) }
     if (arg === '' || arg === 'status') return { text: await status($, s) }
     return { text: `Unknown argument "${e.args.trim()}". Use /unramble setup or /unramble status.` }
-  }).catch(() => ({ text: 'unramble: that command failed; nothing was changed. Try /unramble status.' }))
+  }).catch(() => ({ text: 'that command failed; nothing was changed. Try /unramble status.' }))
 
   on('prompt.edit', async ($, e, next) => {
     const box = await next(e)

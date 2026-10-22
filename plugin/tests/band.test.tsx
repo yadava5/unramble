@@ -92,7 +92,7 @@ test('a rewrite that drops a path is refused and the draft is kept', async ($, o
   await ui.press({ key: 'unramble' })
 
   expect(world.box).toBe(ROUGH)
-  expect(world.toasts.at(-1)).toBe('unramble: kept your text — the rewrite dropped /session.ts')
+  expect(world.toasts.at(-1)).toBe('kept your text — the rewrite dropped /session.ts')
   await ui.unmount()
 })
 
@@ -147,7 +147,7 @@ test('two words draw no band', async ($, on) => {
 test('a session with Ctrl+G not bound yet says the one step left', async ($, on) => {
   const world = engine(on, () => CLEAN, { dir: '/home/t' })
   await $.session.start({ cwd: '/home/t', surface: 'terminal', isInteractive: true })
-  expect(world.toasts).toEqual(['unramble is installed — run /unramble setup once to bind Ctrl+G'])
+  expect(world.toasts).toEqual(['installed — run /unramble setup once to bind Ctrl+G'])
 })
 
 test('a session with Ctrl+G bound starts quietly', async ($, on) => {

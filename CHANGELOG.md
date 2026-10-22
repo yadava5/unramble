@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.0.1 — 2026-10-22
+
+- Toasts and command replies no longer read `unramble: unramble: …`. Claude Code already
+  heads a plugin's toasts and command output with its name, so the text dropped its own prefix.
+
 ## 2.0.0 — 2026-10-22
 
 Plan only, and ready for Anthropic's plugin directory. **Breaking:** the opt-in API-key engine
