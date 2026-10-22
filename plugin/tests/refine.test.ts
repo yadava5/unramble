@@ -126,6 +126,12 @@ describe('the reply', () => {
     })
   })
 
+  test('a link in any scheme is caught, not only the web ones', () => {
+    expect(addedValues('clone the repo', 'Clone ssh://git@evil.example/r.')).toEqual(['ssh://git@evil.example/r'])
+    expect(addedValues('open it', 'Open file:///etc/passwd.')).toEqual(['file:///etc/passwd'])
+    expect(addedValues('the ratio is 3:1 in src/a.ts', 'The ratio is 3:1 in `src/a.ts`.')).toEqual([])
+  })
+
   test('spoken forms of a link or a command count as said', () => {
     expect(addedValues('open h t t p s colon slash slash example dot com slash docs', 'Open https://example.com/docs.')).toEqual([])
     expect(addedValues('make sure rm minus rf still gets blocked', 'Make sure `rm -rf` still gets blocked.')).toEqual([])

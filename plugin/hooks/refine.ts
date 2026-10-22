@@ -81,7 +81,8 @@ const skeleton = (s: string) =>
     .replace(/\b(?:dot|period|point|slash|backslash|dash|minus|hyphen|colon|tilde|underscore|pipe|at sign)\b/g, '')
     .replace(/[^\p{L}\p{N}]/gu, '')
 
-const LINK = /\b(?:https?|ftp|file|data|javascript):\S+|\bwww\.\S+/gi
+// any scheme:// link, the two schemes that need no slashes, and a bare www. address
+const LINK = /\b[a-z][a-z\d+.-]*:\/\/\S+|\b(?:data|javascript):\S+|\bwww\.\S+/gi
 const COMMAND = /\b(?:curl|wget|sudo|chmod|chown|powershell|iex|invoke-expression|base64|netcat|eval|rm\s+-\w+)\b/gi
 const CHAIN = /&&|\|\||\$\(|\|\s*(?:sh|bash|zsh|python3?|node|iex)\b/g
 
