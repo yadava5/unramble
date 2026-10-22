@@ -1,6 +1,9 @@
 # Changelog
 
-## Unreleased
+## 2.0.0 — 2026-10-22
+
+Plan only, and ready for Anthropic's plugin directory. **Breaking:** the opt-in API-key engine
+is gone (below); everything else works as before.
 
 - The band follows the box through `prompt.edit` alone; the `prompt.change` hook is gone, as
   Anthropic's plugin directory does not list that event yet. A prompt recalled from history,
@@ -15,6 +18,8 @@
   Claude Code's own model client. The plugin has no network code and reads no key, and the
   guard fails CI on any network call. If you had set Engine to `api`, rewrites now use your
   plan; a key you saved stays in Claude Code's storage until you remove it there or uninstall.
+- An added link is refused in any `scheme://` form (`ssh://`, `sftp://`, `file:///` and the
+  rest), not only the web ones. Still no refusals on the 2,240 recorded rewrites.
 - A new `keybindings.json` starts as just its `bindings` list, without Claude Code's
   `$schema`/`$docs` header lines; a file you already have is kept as it is.
 
