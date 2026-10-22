@@ -1,32 +1,76 @@
 name: release
 
-# Pushing a tag vX.Y.Z publishes the installer to npm through trusted publishing: no token is
-# stored anywhere, and npm attaches a provenance statement linking the package to this
-# workflow run and commit (check it with `npm audit signatures`).
+# Pushing a tag vX.Y.Z publishes the installer to npm through trusted publishing: no npm token
+# exists anywhere, and npm attaches a provenance statement linking the package to this run and
+# commit (check it with `npm audit signatures`).
+#
+# Two jobs, so the credential is never near third-party code:
+# - verify installs Claude Code and runs every test, with a read-only token and no OIDC.
+# - publish runs only after verify, only for a tag on main, only once the maintainer approves
+#   the `npm` environment, and installs nothing: checkout, setup-node, npm publish.
 on:
   push:
     tags: ["v*"]
 
-permissions:
-  contents: read
-  id-token: write # the OIDC token npm exchanges for a one-time publish credential
+permissions: {}
 
 jobs:
-  npm:
+  verify:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: read
+    outputs:
+      publish: ${{ steps.registry.outputs.publish }}
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
-          registry-url: https://registry.npmjs.org
-      - name: Tag matches package.json
-        run: test "v$(node -p 'require("./package.json").version')" = "$GITHUB_REF_NAME"
-      - name: npm with trusted publishing (11.5.1 or newer)
-        run: npm install --global npm@11
-      - run: npm install --global @anthropic-ai/claude-code@2.1.308
-      - name: Tests
+          package-manager-cache: false
+      - name: The tag is a commit on main
+        run: git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+      - name: The tag matches package.json and plugin.json
+        run: |
+          pkg="v$(node -p 'require("./package.json").version')"
+          plugin="v$(node -p 'require("./.claude-plugin/plugin.json").version')"
+          test "$pkg" = "$GITHUB_REF_NAME" && test "$plugin" = "$GITHUB_REF_NAME"
+      - run: npm install --global @anthropic-ai/claude-code@2.1.308 # zizmor: ignore[adhoc-packages] exact version, no OIDC in this job
+      - name: Tests and guard
         timeout-minutes: 5
         run: npm test
+      - name: Not already on npm
+        id: registry
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          if npm view "unramble@${version}" version >/dev/null 2>&1; then
+            echo "unramble@${version} is already published; nothing to do"
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  publish:
+    needs: verify
+    if: needs.verify.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: npm
+    permissions:
+      contents: read
+      id-token: write # exchanged with npm for a one-time publish credential
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          package-manager-cache: false
+          registry-url: https://registry.npmjs.org
+      - name: npm 11.5.1 or newer (needed for trusted publishing)
+        run: node -e 'const [a,b,c]=process.argv[1].split(".").map(Number); process.exit(a>11||(a==11&&(b>5||(b==5&&c>=1)))?0:1)' "$(npm --version)"
       - run: npm publish --access public

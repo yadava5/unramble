@@ -27,21 +27,27 @@ jobs:
             claude: latest
     continue-on-error: ${{ matrix.claude == 'latest' }}
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
+          package-manager-cache: false
       - name: Install Claude Code ${{ matrix.claude }}
-        run: npm install --global @anthropic-ai/claude-code@${{ matrix.claude }}
+        # An exact version, except the deliberate `latest` canary row (continue-on-error, read-only token).
+        run: npm install --global "@anthropic-ai/claude-code@${CLAUDE_VERSION}" # zizmor: ignore[adhoc-packages]
+        env:
+          CLAUDE_VERSION: ${{ matrix.claude }}
       - name: Validate manifest and hooks
         timeout-minutes: 3
         run: claude plugin validate .
       - name: Plugin tests (engine test host)
         timeout-minutes: 3
         run: claude plugin test .
-      - name: Installer tests
+      - name: Installer and guard tests
         timeout-minutes: 3
-        run: node --test "cli/*.test.mjs"
+        run: node --test "cli/*.test.mjs" "scripts/*.test.mjs"
 
   install:
     # The real thing on each OS: `npx`-style install from this checkout into a throwaway config
@@ -57,11 +63,14 @@ jobs:
       UNRAMBLE_MARKETPLACE: ${{ github.workspace }}
       CLAUDE_CONFIG_DIR: ${{ github.workspace }}/../claude-config
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
-      - run: npm install --global @anthropic-ai/claude-code@2.1.308
+          package-manager-cache: false
+      - run: npm install --global @anthropic-ai/claude-code@2.1.308 # zizmor: ignore[adhoc-packages] exact version
       - name: Install
         timeout-minutes: 5
         run: node cli/unramble.mjs install
@@ -78,14 +87,3 @@ jobs:
           node cli/unramble.mjs status | tee status.txt
           grep -q 'Plugin:  not installed' status.txt
           grep -q 'Ctrl+G:  not bound' status.txt
-
-  rules:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - name: The rules carry no built-in name list
-        run: |
-          if grep -niE 'names (you may hear|this user often says):[[:space:]]*[^[:space:](]' prompt/system.md; then
-            echo "prompt/system.md hard-codes a name list; names belong in the vocabulary setting" >&2
-            exit 1
-          fi
