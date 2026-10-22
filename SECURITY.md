@@ -8,8 +8,9 @@ actually uses (from `claude plugin validate .`, which reads the module the way t
 - **Prompt box**: sends the draft and fills the rewrite only when you press Ctrl+G. As you edit,
   it sees the text only to count words for the band and to remember what a paste chip stands
   for, and forgets both when you send.
-- **Model**: `$.model.complete` on your own session, or the Anthropic API if you opted in.
-- **Network**: `https://api.anthropic.com` only, and only on the opt-in API engine.
+- **Model**: `$.model.complete` on your own Claude Code session and plan.
+- **Network**: none. The plugin has no network code and no API key; the model call goes through
+  Claude Code's own client.
 - **Files**: reads its own `prompt/system.md`; reads and, on `/unramble setup`, writes
   `keybindings.json` in your Claude Code config folder (with a `.unramble-backup` beside it).
 - **Environment**: reads `CLAUDE_CONFIG_DIR`, `HOME` and `USERPROFILE` to find that folder.

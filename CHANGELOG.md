@@ -11,6 +11,12 @@
   updating work as before. `plugin/README.md` is the plugin's own README, with examples and
   troubleshooting.
 - The guard fails on any file in `plugin/` that is not on its list.
+- **Removed the opt-in API-key engine.** unramble now runs only on your Claude Code plan, through
+  Claude Code's own model client. The plugin has no network code and reads no key, and the
+  guard fails CI on any network call. If you had set Engine to `api`, rewrites now use your
+  plan; a key you saved stays in Claude Code's storage until you remove it there or uninstall.
+- A new `keybindings.json` starts as just its `bindings` list, without Claude Code's
+  `$schema`/`$docs` header lines; a file you already have is kept as it is.
 
 ## 1.0.1 — 2026-10-22
 

@@ -69,14 +69,10 @@ fillers and all.
 
 ## What it does on your machine
 
-- **Sends**
-  - On Ctrl+G with the `plan` engine (the default): your draft, with pasted logs and code
-    masked out, plus the rules in `prompt/system.md`, to the model through Claude Code's own
-    session (`$.model.complete`). Nothing else leaves your machine.
-  - With the opt-in `api` engine only: the same draft and rules to
-    `https://api.anthropic.com/v1/messages`, and a model-list request to
-    `https://api.anthropic.com/v1/models?limit=100` at most once a day, both with the API key
-    you saved in the plugin's settings. These are the only hosts it contacts.
+- **Sends**: on Ctrl+G only, your draft, with pasted logs and code masked out, plus the rules
+  in `prompt/system.md`, to the model through Claude Code's own session (`$.model.complete`),
+  on your Claude Code plan. The plugin has no network code, no API key and no server of its
+  own; nothing else leaves your machine.
 - **Writes**
   - `keybindings.json` in your Claude Code config folder (`$CLAUDE_CONFIG_DIR`, else
     `~/.claude`), only when you run `/unramble setup`: it adds the two Ctrl+G bindings and
@@ -108,14 +104,12 @@ fillers and all.
 
 | Setting | Default | |
 |---|---|---|
-| Engine | `plan` | `plan` (your Claude Code login, no key) or `api` (your own Anthropic API key) |
 | Model | `sonnet` | `sonnet` (fast, light on your plan) or `opus` (the most faithful) |
 | Names you often say | empty | comma-separated names of your tools and projects, so a dictation slip is spelled right |
-| Anthropic API key | empty | read only when Engine is `api`; Claude Code keeps it in its secure storage |
 
 ## Troubleshooting
 
-`/unramble status` shows the engine, the model and whether Ctrl+G is bound.
+`/unramble status` shows the model and whether Ctrl+G is bound.
 
 - **Ctrl+G opens an editor instead.** Ctrl+G is not bound yet: run `/unramble setup`, then
   start a new session.
@@ -125,8 +119,8 @@ fillers and all.
   so your draft stayed. Press Ctrl+G again to retry, or send the draft as it is.
 - **A long paste stays as `[Pasted text #N]`.** Claude Code folds long pastes into a chip that
   plugins cannot read, so that text is kept as is.
-- **Engine `api` fails.** The toast gives the reason (key, credit or network). It never falls
-  back to your plan; switch Engine back to `plan` in `/config` if you prefer.
+- **A toast says the model call failed.** It gives the reason: not signed in, usage limit
+  reached, no connection, or a timeout. Your draft stays as it was.
 
 It works in Claude Code's terminal interface (a terminal, or the one inside VS Code or
 Cursor), on Claude Code 2.1.308 and later. The VS Code extension's chat panel and the desktop

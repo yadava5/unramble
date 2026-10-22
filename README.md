@@ -10,7 +10,7 @@
 <p align="center">
   <a href="https://yadava5.github.io/unramble/"><b>Install in one click</b></a> ·
   <a href="#what-it-does">What it does</a> ·
-  <a href="#plan-or-api-key">Plan or API key</a> ·
+  <a href="#runs-on-your-plan">Runs on your plan</a> ·
   <a href="docs/BENCHMARKS.md">Benchmarks</a> ·
   <a href="docs/HOW-IT-WORKS.md">How it works</a>
 </p>
@@ -107,22 +107,12 @@ count that as a minor defect.)
 - **Answer your question or do the task.** "Can you check X?" stays a question for Claude Code.
 - **Overwrite you.** If you typed while it ran, your text wins.
 
-## Plan or API key
+## Runs on your plan
 
-| Engine | Pays with | Setup | Default |
-|---|---|---|---|
-| `plan` | your Claude Code subscription, like any prompt | none | ✓ |
-| `api` | your own Anthropic API key, per rewrite | [a separate opt-in step](docs/API-KEY.md) | |
-
-The plan engine calls the model through your Claude Code session's own login
-(`$.model.complete`), so there is no key anywhere in the plugin. Each rewrite is one short
-call: ~3k tokens of rules (cached after the first rewrite) plus your words.
-
-The API engine exists for people who would rather pay a fraction of a cent per rewrite than
-spend plan usage. It stays off until you switch it on, the key lives in Claude Code's secure
-storage, and a failed API call never falls back to your plan. Read
-[docs/API-KEY.md](docs/API-KEY.md), and `viaApi` in [`plugin/hooks/register.tsx`](plugin/hooks/register.tsx),
-before you paste a key in.
+unramble calls the model through your Claude Code session's own login (`$.model.complete`),
+billed to your Claude Code subscription like any prompt. There is no API key, no network code
+and no server anywhere in the plugin. Each rewrite is one short call: ~3k tokens of rules
+(cached after the first rewrite) plus your words.
 
 ## What it does on your machine
 
@@ -130,14 +120,10 @@ Everything the plugin's hooks module ([`plugin/hooks/register.tsx`](plugin/hooks
 can reach. The plugin is the [`plugin/`](plugin/) folder, the only part of this repository
 that Claude Code installs:
 
-- **Sends**
-  - On Ctrl+G with the `plan` engine (the default): your draft, with pasted logs and code
-    masked out, plus the rules in [`prompt/system.md`](plugin/prompt/system.md), to the model through
-    Claude Code's own session (`$.model.complete`). Nothing else leaves your machine.
-  - With the opt-in `api` engine only: the same draft and rules to
-    `https://api.anthropic.com/v1/messages`, and a model-list request to
-    `https://api.anthropic.com/v1/models?limit=100` at most once a day, both with the API key
-    you saved in the plugin's settings. These are the only hosts it contacts.
+- **Sends**: on Ctrl+G only, your draft, with pasted logs and code masked out, plus the rules
+  in [`prompt/system.md`](plugin/prompt/system.md), to the model through Claude Code's own
+  session (`$.model.complete`), on your Claude Code plan. The plugin has no network code, no
+  API key and no server of its own; nothing else leaves your machine.
 - **Writes**
   - `keybindings.json` in your Claude Code config folder (`$CLAUDE_CONFIG_DIR`, else
     `~/.claude`), only when you run `/unramble setup`: it adds the two Ctrl+G bindings and
@@ -146,16 +132,22 @@ that Claude Code installs:
   - Your prompt box, only when you press Ctrl+G: the rewrite, or your original back.
 - **Reads**: its own `prompt/system.md`; `keybindings.json` (to know whether Ctrl+G is bound);
   the environment variables `CLAUDE_CONFIG_DIR`, `HOME` and `USERPROFILE` to find that folder.
+  As you edit, it sees the prompt box's text only to count words for the band and to remember
+  what a paste chip stands for, and forgets both when you send. It never reads your
+  conversation, history or project files.
 - **Hooks**
   - `session.start`: registers `/unramble` and checks whether Ctrl+G is bound; if not, shows
     one toast saying to run `/unramble setup`.
-  - `command.run` (`/unramble`): runs `setup` or `status`.
+  - `command.run` (`/unramble` only): runs `setup` or `status`. It sees no other command.
   - `prompt.edit`: notes whether the box holds a draft and what a paste chip stands for, so the
     band and the rewrite see your words. It changes nothing. A prompt recalled from history, or
     a box you cleared, reaches the band at your next key.
   - `prompt.submit`: forgets the draft once you send it. It never changes or blocks a prompt.
   - `ui.render` (above the prompt): draws the `⌃G refine` band.
 - **Runs**: no commands and no processes. Adds one slash command, `/unramble`.
+- **Refuses**: a rewrite that adds a link, a shell command or shell chaining you never said.
+  Text pasted into the box can carry instructions, and the prompt goes to an agent that can
+  run commands. On 2,240 recorded rewrites this refused none.
 
 ## Settings
 
@@ -163,10 +155,8 @@ that Claude Code installs:
 
 | Setting | Default | |
 |---|---|---|
-| Engine | `plan` | `plan` or `api` |
 | Model | `sonnet` | `sonnet` (fast, light on your plan) or `opus` (the most faithful) |
 | Names you often say | empty | comma-separated names of your tools, agents and projects, so a dictation slip is spelled right |
-| Anthropic API key | empty | read only when Engine is `api` |
 
 `/unramble status` shows what is live.
 

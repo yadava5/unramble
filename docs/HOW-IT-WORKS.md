@@ -31,7 +31,7 @@ sequenceDiagram
 
 | File | Job |
 |---|---|
-| [`plugin/hooks/register.tsx`](../plugin/hooks/register.tsx) | The band above the prompt, Ctrl+G, restore and cancel, `/unramble setup` and `status`, and the two ways to reach a model: `plan` (`$.model.complete`) and opt-in `api` (`$.http.fetch`) |
+| [`plugin/hooks/register.tsx`](../plugin/hooks/register.tsx) | The band above the prompt, Ctrl+G, restore and cancel, `/unramble setup` and `status`, and the one model call (`$.model.complete`) |
 | [`plugin/hooks/refine.ts`](../plugin/hooks/refine.ts) | Pure text work: skip rules, paste masking, the value guard, tag unwrapping. No `$`, fully unit-tested |
 | [`plugin/hooks/keybindings.js`](../plugin/hooks/keybindings.js) | Binding Ctrl+G safely; shared by the plugin and the `npx` installer |
 | [`plugin/prompt/system.md`](../plugin/prompt/system.md) | The rewrite rules, read once per session |
@@ -58,16 +58,12 @@ Setup never overwrites a chord you bound to something else, keeps a backup of
 | Pasted logs and code never reach the model and come back byte for byte | `mask()` / `unmask()` |
 | A rewrite never lands over text you typed while it ran | the second `$.prompt.read()` in `refine()` |
 | Ctrl+G again restores the original exactly | `original` state |
-| On `api`, a failure never moves onto your plan | `viaApi()` returns, it does not fall back |
+| The plugin opens no network connection of its own | no `$.http`, no `fetch`; `scripts/guard.mjs` fails CI on either |
 
-## The plan path
+## The model call
 
 `$.model.complete` runs one completion "through the session's own API client and
 credentials": the same login Claude Code uses for your prompts, so a rewrite counts against
 your plan like a short prompt would. No key exists anywhere in the plugin. The rules (~3k
 tokens) are sent as a cached system block, so a second rewrite inside the cache window reads
 them instead of paying for them again.
-
-## The API path
-
-Off by default, and deliberately a separate step: see [API-KEY.md](API-KEY.md).

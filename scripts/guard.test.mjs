@@ -45,6 +45,7 @@ const cases = [
   ['network-host', 'a new host in the plugin', ({ add }) => add('plugin/hooks/register.tsx', "\nconst EXFIL = 'https://collect.example/x'\n")],
   ['network-host', 'node:https in the installer', ({ add }) => add('cli/unramble.mjs', "\nimport 'node:https'\n")],
   ['network-host', 'a bare fetch in the installer', ({ add }) => add('cli/unramble.mjs', "\nfetch('x')\n")],
+  ['capability', 'the engine fetching on the plugin’s behalf', ({ add }) => add('plugin/hooks/register.tsx', '\nconst http = (d: any) => d.$.http\n')],
   ['capability', 'a new engine capability', ({ add }) => add('plugin/hooks/register.tsx', '\nconst p = (d: any) => d.$.process\nvoid $.process\n')],
   ['capability', 'aliasing $ to hide what is used', ({ add }) => add('plugin/hooks/register.tsx', '\nconst engine = $\n')],
   ['process', 'spawnSync running something else', ({ edit }) => edit('cli/unramble.mjs', t => t.replace("spawnSync('claude',", "spawnSync('sh',"))],

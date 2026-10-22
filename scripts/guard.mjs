@@ -36,15 +36,12 @@ const PLUGIN_TESTS = /^plugin\/tests\/[\w.-]+\.test\.tsx?$/
 
 /** Engine capabilities (`$.noun`) each runtime file may use. */
 const CAPABILITIES = {
-  'plugin/hooks/register.tsx': ['clock', 'command', 'env', 'fs', 'http', 'model', 'plugin', 'prompt', 'store', 'ui'],
+  'plugin/hooks/register.tsx': ['clock', 'command', 'env', 'fs', 'model', 'plugin', 'prompt', 'ui'],
 }
 
-/** Every URL the shipped code may contain. The only host it talks to is the Anthropic API. */
-const URLS = [
-  'https://api.anthropic.com/v1/models?limit=100',
-  'https://api.anthropic.com/v1/messages',
-  'https://code.claude.com/docs/en/setup',
-]
+/** Every URL the shipped code may contain. The plugin talks to no host itself: the model call
+ *  goes through Claude Code's own client. The installer names only Claude Code's setup page. */
+const URLS = ['https://code.claude.com/docs/en/setup']
 
 /** Binary files are allowed only as these, only here. */
 const BINARIES = [/^assets\/[\w.-]+\.(png|gif|mp4)$/, /^plugin\/assets\/logo-512\.png$/, /^video\/public\/fonts\/[\w.-]+\.ttf$/]
@@ -126,7 +123,7 @@ export function guard(root) {
     for (const url of code.match(/https?:\/\/[^\s'"`)<>]+/g) ?? []) {
       if (!URLS.includes(url.replace(/[.,;]+$/, ''))) fail('network-host', f, `URL not on the list: ${url}`)
     }
-    if (/\bnode:(http|https|net|tls|dgram|dns|http2|vm|worker_threads|cluster)\b|\bfetch\s*\(/.test(code.replace(/\$\.http\.fetch/g, ''))) {
+    if (/\bnode:(http|https|net|tls|dgram|dns|http2|vm|worker_threads|cluster)\b|\bfetch\s*\(/.test(code)) {
       fail('network-host', f, 'network or vm module outside the engine')
     }
     const uses = new Set([...code.matchAll(/\$\.([A-Za-z_]\w*)/g)].map(m => m[1]))

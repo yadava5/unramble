@@ -30,13 +30,11 @@ const rewrite = atom({ plugin: 'unramble', key: 'rewrite' } as const, '')
 // What each paste chip in the box stands for: the box holds only the chip, the edit carried the text.
 const pastes = atom({ plugin: 'unramble', key: 'pastes' } as const, {} as Record<string, string>)
 
-type Settings = { engine: string; model: string; vocabulary: string; apiKey: string }
+type Settings = { model: string; vocabulary: string }
 
 const settingsOf = (options: Readonly<Record<string, unknown>>): Settings => ({
-  engine: options.engine === 'api' ? 'api' : 'plan',
   model: options.model === 'opus' ? 'opus' : 'sonnet',
   vocabulary: typeof options.vocabulary === 'string' ? options.vocabulary : '',
-  apiKey: typeof options.apiKey === 'string' ? options.apiKey : '',
 })
 
 const isAbsolute = (p: string) => p.startsWith('/') || /^[A-Za-z]:[\\/]/.test(p) || p.startsWith('\\\\')
@@ -96,11 +94,11 @@ async function status($: EngineInterface, s: Settings): Promise<string> {
   } catch {}
   const names = s.vocabulary.split(/[,\n]/).filter(n => n.trim()).length
   return [
-    `Engine: ${s.engine === 'api' ? `your Anthropic API key (${s.apiKey ? 'saved' : 'NOT saved'})` : "your Claude Code plan (the session's own login)"}`,
+    "Runs on: your Claude Code plan (the session's own login)",
     `Model: ${s.model}`,
     `Vocabulary: ${names ? `${names} name${names === 1 ? '' : 's'}` : 'none'}`,
     `Ctrl+G: ${bound ? 'bound' : `not bound in ${path}; run /unramble setup`}`,
-    'Change engine, model or vocabulary in /config (unramble rows), or with: claude plugin configure unramble',
+    'Change the model or vocabulary in /config (unramble rows), or with: claude plugin configure unramble',
   ].join('\n')
 }
 
@@ -114,19 +112,15 @@ async function rules($: EngineInterface): Promise<string> {
   return rulesText
 }
 
-// Two ways to reach a model. `plan` (the default) is Claude Code's own client: the session's
-// login, billed to the person's plan exactly like their prompts, with no key anywhere. `api` is
-// opt-in: a key the person saved in the plugin's settings, which Claude Code keeps in its
-// secure storage, sent only to api.anthropic.com and only while `engine` says `api`. A failed
-// API call never slides onto the plan; the draft is kept and the toast says why. Models are
-// asked for by family (`sonnet`, `opus`), so the newest of each is used without an update.
+// The model is reached through Claude Code's own client: the session's login, billed to the
+// person's plan exactly like their prompts, with no key and no network code in the plugin.
+// Models are asked for by family (`sonnet`, `opus`), so the newest of each is used without an
+// update.
 
 const TIMEOUT_MS = 45_000
 const MAX_TOKENS = 8_000
-const DAY_MS = 86_400_000
 
 type Outcome = { ok: true; text: string; via: string } | { ok: false; why: string }
-type Fetched = { status: number; ok: boolean; text: string }
 
 function explain(r: Exclude<ModelCompleteResult, { isAnswered: true }>): string {
   if (r.reason === 'aborted') return 'cancelled or timed out'
@@ -146,70 +140,6 @@ async function viaPlan($: EngineInterface, system: string, prompt: string, model
     { signal },
   )
   return r.isAnswered ? { ok: true, text: r.text, via: `${model} on your plan` } : { ok: false, why: explain(r) }
-}
-
-function withTimeout($: EngineInterface, call: Promise<Fetched>): Promise<Fetched | null> {
-  return new Promise(resolve => {
-    const timer = $.clock.after(TIMEOUT_MS, () => resolve(null))
-    call.then(
-      r => {
-        timer.cancel()
-        resolve(r)
-      },
-      () => {
-        timer.cancel()
-        resolve({ status: 0, ok: false, text: '' })
-      },
-    )
-  })
-}
-
-/** The newest model id of a family (`sonnet`, `opus`), re-checked daily, so a release needs no update. */
-async function apiModel($: EngineInterface, key: string, family: string): Promise<string | null> {
-  const cached = (await $.store.get(`apiModel.${family}`)) as { id: string; at: number } | undefined
-  const now = await $.clock.now()
-  if (cached && now - cached.at < DAY_MS) return cached.id
-  const r = await withTimeout(
-    $,
-    $.http.fetch('https://api.anthropic.com/v1/models?limit=100', {
-      method: 'GET',
-      headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01' },
-    }),
-  )
-  if (!r?.ok) return null
-  const models = (JSON.parse(r.text).data ?? []) as { id: string; created_at: string }[]
-  const best = models
-    .filter(m => m.id.includes(family))
-    .sort((a, b) => a.created_at.localeCompare(b.created_at))
-    .pop()
-  if (!best) return null
-  await $.store.set(`apiModel.${family}`, { id: best.id, at: now })
-  return best.id
-}
-
-async function viaApi($: EngineInterface, apiKey: string, system: string, prompt: string, family: string): Promise<Outcome> {
-  const key = apiKey.trim()
-  if (!key) return { ok: false, why: 'engine is "api" but no API key is saved (see /unramble status)' }
-  const model = await apiModel($, key, family)
-  if (!model) return { ok: false, why: 'the API key was refused or the model list is unreachable' }
-  const r = await withTimeout(
-    $,
-    $.http.fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-      body: JSON.stringify({
-        model,
-        max_tokens: MAX_TOKENS,
-        system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }],
-        messages: [{ role: 'user', content: prompt }],
-      }),
-    }),
-  )
-  if (r === null) return { ok: false, why: `timed out after ${TIMEOUT_MS / 1000}s` }
-  if (!r.ok) return { ok: false, why: r.status ? `the API call failed (${r.status})` : 'no connection to the API' }
-  const content = (JSON.parse(r.text).content ?? []) as { type: string; text?: string }[]
-  const text = content.map(b => (b.type === 'text' ? (b.text ?? '') : '')).join('')
-  return { ok: true, text, via: `${model} via your API key` }
 }
 
 async function refine($: EngineInterface, s: Settings) {
@@ -239,10 +169,7 @@ async function refine($: EngineInterface, s: Settings) {
     const startedAt = await $.clock.now()
     const { masked, blocks } = mask(spoken)
     const system = systemPrompt(await rules($), s.vocabulary)
-    const out: Outcome =
-      s.engine === 'api'
-        ? await viaApi($, s.apiKey, system, transcript(masked), s.model)
-        : await viaPlan($, system, transcript(masked), s.model, controller.signal)
+    const out = await viaPlan($, system, transcript(masked), s.model, controller.signal)
     if (controller.signal.aborted) {
       $.ui.toast('unramble: cancelled — your text is unchanged')
       return
@@ -287,7 +214,7 @@ export const register: Register = (on, options) => {
   on('session.start', async ($, e, next) => {
     await $.command.register({
       name: NAME,
-      description: 'Ctrl+G prompt cleanup: `setup` binds the key, `status` shows engine, model and key binding',
+      description: 'Ctrl+G prompt cleanup: `setup` binds the key, `status` shows the model and key binding',
       argumentHint: 'setup | status',
     })
     let bound = false
