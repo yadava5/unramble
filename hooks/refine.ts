@@ -59,6 +59,50 @@ export function missingValues(draft: string, rewrite: string): string[] {
     .sort()
 }
 
+// Invisible and direction-changing characters, as code points: bidi controls, zero-width
+// characters, word joiners, BOM, and the tag block that can hide text from a reader.
+const HIDDEN: readonly (readonly [number, number])[] = [
+  [0x200b, 0x200f],
+  [0x202a, 0x202e],
+  [0x2060, 0x2064],
+  [0x2066, 0x206f],
+  [0xfeff, 0xfeff],
+  [0xe0000, 0xe007f],
+]
+const isHidden = (ch: string) => {
+  const cp = ch.codePointAt(0) ?? 0
+  return HIDDEN.some(([lo, hi]) => cp >= lo && cp <= hi)
+}
+
+/** Letters and digits only, with spoken punctuation dropped: "ayush dot dev" vouches for ayush.dev. */
+const skeleton = (s: string) =>
+  s
+    .toLowerCase()
+    .replace(/\b(?:dot|period|point|slash|backslash|dash|minus|hyphen|colon|tilde|underscore|pipe|at sign)\b/g, '')
+    .replace(/[^\p{L}\p{N}]/gu, '')
+
+const LINK = /\b(?:https?|ftp|file|data|javascript):\S+|\bwww\.\S+/gi
+const COMMAND = /\b(?:curl|wget|sudo|chmod|chown|powershell|iex|invoke-expression|base64|netcat|eval|rm\s+-\w+)\b/gi
+const CHAIN = /&&|\|\||\$\(|\|\s*(?:sh|bash|zsh|python3?|node|iex)\b/g
+
+/**
+ * What a rewrite brought in that the speaker never said: a link, a download-or-run command,
+ * shell chaining, or invisible characters. Text pasted into the draft can carry instructions,
+ * and a rewrite that obeyed them would hand an agent with a shell something to run. Spoken
+ * forms count as said ("rm dash r f" for `rm -rf`, "h t t p s colon slash slash" for a link).
+ */
+export function addedValues(draft: string, rewrite: string): string[] {
+  const said = skeleton(draft)
+  const risky = [...rewrite.matchAll(LINK), ...rewrite.matchAll(COMMAND)]
+    .map(m => m[0].replace(/[.,;:)`'"]+$/, ''))
+    .filter(v => !said.includes(skeleton(v)))
+  const chains = [...rewrite.matchAll(CHAIN)].map(m => m[0]).filter(c => !draft.includes(c))
+  const hidden = [...rewrite]
+    .filter(c => isHidden(c) && !draft.includes(c))
+    .map(c => `U+${(c.codePointAt(0) ?? 0).toString(16).toUpperCase()}`)
+  return [...new Set([...risky, ...chains, ...hidden])].sort()
+}
+
 /** A line that looks pasted (log, code, config, table) rather than spoken. */
 export function isMachine(line: string): boolean {
   // placeholders, URLs and @-references are guarded by tokens(); judge the rest of the line
@@ -133,7 +177,9 @@ export function systemPrompt(rules: string, vocabulary: string): string {
     : rules.trimEnd()
 }
 
-export const transcript = (masked: string) => `<transcript>\n${masked}\n</transcript>`
+/** The draft as the model sees it; a closing tag inside the draft cannot end the transcript early. */
+export const transcript = (masked: string) =>
+  `<transcript>\n${masked.replace(/<\/?transcript>/gi, t => t.replace('<', '‹'))}\n</transcript>`
 
 /** Claude Code's chip for a multi-line paste, as the box holds it: `[Pasted text #2 +4 lines]`. */
 export const PASTE_CHIP = /\[Pasted text #\d+[^\]]*\]/g
@@ -167,5 +213,7 @@ export function check(draft: string, reply: string, blocks: readonly string[]): 
   if (text === null) return { ok: false, why: 'the rewrite lost or duplicated a pasted block' }
   const missing = missingValues(draft.trim(), text)
   if (missing.length) return { ok: false, why: `the rewrite dropped ${missing.slice(0, 4).join(', ')}` }
+  const added = addedValues(draft.trim(), text)
+  if (added.length) return { ok: false, why: `the rewrite added ${added.slice(0, 3).join(', ')}, which you never said` }
   return { ok: true, text }
 }
