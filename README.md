@@ -8,7 +8,7 @@
 <p align="center"><b>Press Ctrl+G and the rambling prompt you just dictated becomes the one you meant to type — in place, inside Claude Code, on the plan you already have.</b></p>
 
 <p align="center">
-  <a href="#install">Install</a> ·
+  <a href="https://yadava5.github.io/unramble/"><b>Install in one click</b></a> ·
   <a href="#what-it-does">What it does</a> ·
   <a href="#plan-or-api-key">Plan or API key</a> ·
   <a href="docs/BENCHMARKS.md">Benchmarks</a> ·
@@ -34,6 +34,9 @@ numbered, standing rules under *Constraints*. Same meaning — nothing added, no
 lost. Ctrl+G again puts your original back.
 
 ## Install
+
+**One click:** [**Install in Claude Code →**](https://yadava5.github.io/unramble/) opens Claude
+Code in your terminal with the install command typed in; press Enter.
 
 **In your terminal** (zsh, bash, PowerShell — not inside Claude Code; needs Node 18+):
 
