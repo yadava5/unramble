@@ -1,0 +1,17 @@
+{
+  "name": "unramble",
+  "owner": {
+    "name": "Ayush Yadav",
+    "url": "https://github.com/yadava5"
+  },
+  "metadata": {
+    "description": "unramble: Ctrl+G prompt cleanup for Claude Code"
+  },
+  "plugins": [
+    {
+      "name": "unramble",
+      "source": "./",
+      "description": "Ctrl+G turns a rambling, dictated prompt into a clean, ordered one, in place, on your own Claude Code plan."
+    }
+  ]
+}

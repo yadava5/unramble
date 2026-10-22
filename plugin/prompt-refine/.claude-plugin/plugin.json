@@ -1,7 +1,0 @@
-{
-  "name": "prompt-refine",
-  "version": "0.1.0",
-  "description": "Ctrl+G rewrites a rough dictated prompt in place (claude-refine --filter), without leaving Claude Code's screen",
-  "author": { "name": "unramble" },
-  "types": "./types/index.d.ts"
-}

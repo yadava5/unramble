@@ -1,0 +1,41 @@
+{
+  "name": "unramble",
+  "version": "1.0.0",
+  "description": "Ctrl+G turns a rambling, dictated prompt into a clean, ordered one, in place, on your own Claude Code plan.",
+  "author": { "name": "Ayush Yadav", "url": "https://github.com/yadava5" },
+  "homepage": "https://github.com/yadava5/unramble",
+  "repository": "https://github.com/yadava5/unramble",
+  "license": "MIT",
+  "keywords": ["dictation", "prompt", "voice", "rewrite", "keybinding"],
+  "icon": "./assets/logo-512.png",
+  "types": "./types/index.d.ts",
+  "userConfig": {
+    "engine": {
+      "type": "string",
+      "title": "Engine",
+      "description": "plan: your Claude Code login and plan (no key). api: your own Anthropic API key, set below.",
+      "options": ["plan", "api"],
+      "default": "plan"
+    },
+    "model": {
+      "type": "string",
+      "title": "Model",
+      "description": "Which model rewrites. sonnet is fast and light on your plan; opus is the most faithful.",
+      "options": ["sonnet", "opus"],
+      "default": "sonnet"
+    },
+    "vocabulary": {
+      "type": "string",
+      "title": "Names you often say",
+      "description": "Comma-separated names of your tools, agents and projects, so dictation slips are spelled right.",
+      "default": ""
+    },
+    "apiKey": {
+      "type": "string",
+      "title": "Anthropic API key (engine: api only)",
+      "description": "Only read when Engine is api. Claude Code keeps it in its secure storage.",
+      "sensitive": true,
+      "required": false
+    }
+  }
+}

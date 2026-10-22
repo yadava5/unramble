@@ -1,2 +1,12 @@
+# Written by Claude Code each time it loads the plugin from this folder
+.claude-plugin/types/
+
+node_modules/
+video/node_modules/
+video/out/
+# launch material rendered from video/, kept out of the repo
+assets/linkedin.mp4
+assets/linkedin-cover.png
+*.log
 .DS_Store
-__pycache__/
+*.unramble-backup
