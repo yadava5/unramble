@@ -17,6 +17,7 @@
 
 <p align="center">
   <a href="https://github.com/yadava5/unramble/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/yadava5/unramble/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://www.npmjs.com/package/unramble"><img alt="npm" src="https://img.shields.io/npm/v/unramble"></a>
   <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-blue"></a>
   <img alt="Claude Code plugin" src="https://img.shields.io/badge/Claude%20Code-plugin-d97757">
   <img alt="No API key needed" src="https://img.shields.io/badge/API%20key-not%20needed-2ea44f">
@@ -39,7 +40,7 @@ Pick one. Both install the same plugin and bind Ctrl+G.
 **A. In your terminal** (zsh, bash, PowerShell — not inside Claude Code; needs Node 18+):
 
 ```sh
-npx github:yadava5/unramble
+npx unramble
 ```
 
 **B. Inside Claude Code** — start `claude`, then type these at its `❯` prompt, one at a time:
@@ -179,7 +180,7 @@ editor as VS Code and Cursor). If one does not work, please
 ## Uninstall
 
 ```sh
-npx github:yadava5/unramble uninstall
+npx unramble uninstall
 ```
 
 That removes the plugin and takes back only the two `ctrl+g` bindings setup added. Without

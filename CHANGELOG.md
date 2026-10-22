@@ -11,7 +11,7 @@ First public release.
 - `vocabulary` setting for names you say often.
 - Guard: a rewrite that drops a path, flag, number, URL or paste chip is refused; pasted logs
   are masked and restored byte for byte.
-- `/unramble setup` and `npx github:yadava5/unramble` bind Ctrl+G without overwriting your
+- `/unramble setup` and `npx unramble` bind Ctrl+G without overwriting your
   own bindings; `uninstall` takes back only what setup added.
 - Rules measured at 76/78 (Sonnet) and 78/78 (Opus) major-free on the hard set; see
   [docs/BENCHMARKS.md](docs/BENCHMARKS.md).
