@@ -1,0 +1,18 @@
+version: 2
+updates:
+  # Workflow actions are pinned to commits; Dependabot moves the pin and the version comment.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
+  # The video tooling (Remotion). The plugin and the installer have no dependencies.
+  - package-ecosystem: npm
+    directory: /video
+    schedule:
+      interval: monthly
+    groups:
+      video:
+        patterns: ["*"]

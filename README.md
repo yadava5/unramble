@@ -35,15 +35,16 @@ lost. Ctrl+G again puts your original back.
 
 ## Install
 
-Pick one. Both install the same plugin and bind Ctrl+G.
-
-**A. In your terminal** (zsh, bash, PowerShell — not inside Claude Code; needs Node 18+):
+**In your terminal** (zsh, bash, PowerShell — not inside Claude Code; needs Node 18+):
 
 ```sh
 npx unramble
 ```
 
-**B. Inside Claude Code** — start `claude`, then type these at its `❯` prompt, one at a time:
+That installs the plugin and binds Ctrl+G in one step.
+
+**Or inside Claude Code**, with no Node needed: start `claude`, then type these at its `❯`
+prompt, one at a time. Claude Code has no shorter form for a plugin outside its own directory.
 
 ```text
 /plugin install unramble --marketplace yadava5/unramble
@@ -93,6 +94,9 @@ count that as a minor defect.)
 - **Lose a machine value.** A rewrite that drops a path, `--flag`, number, URL, `@ref` or
   `[Pasted text]` chip is refused and your draft stays — unless you corrected that value on
   the spot ("src/utils, no wait, src/lib").
+- **Add a link or a command you never said.** Pasted text can carry instructions; a rewrite
+  that brings in a URL, `curl`/`wget`/`sudo`/`rm -…`, shell chaining or invisible characters
+  you did not say is refused. On 2,240 recorded rewrites this refused none.
 - **Touch pasted logs or code.** They are masked before the model sees the draft and put back
   byte for byte.
 - **Answer your question or do the task.** "Can you check X?" stays a question for Claude Code.
@@ -198,8 +202,15 @@ plan instead of an API key. I used Claude Code to build it.
 ## Contributing
 
 Reports of a rewrite that changed your meaning are the most useful thing you can send; there
-is an [issue template](https://github.com/yadava5/unramble/issues/new/choose) for it. See
-[CONTRIBUTING.md](CONTRIBUTING.md).
+is an [issue template](https://github.com/yadava5/unramble/issues/new/choose) for it. Pull
+requests are welcome: see [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Security
+
+Every change reaches `main` through a reviewed pull request, releases publish only from a
+maintainer-approved tag with npm provenance, and CI fails any change that widens what the
+shipped code can reach. [SECURITY.md](SECURITY.md) lists exactly what the plugin touches and how
+to report a vulnerability privately.
 
 ## License
 

@@ -1,0 +1,11 @@
+# Every change needs the maintainer's review before it can merge into main.
+* @yadava5
+
+# Named again so it is plain which paths ship to users or control releases.
+/hooks/ @yadava5
+/cli/ @yadava5
+/prompt/ @yadava5
+/scripts/ @yadava5
+/.github/ @yadava5
+/.claude-plugin/ @yadava5
+/package.json @yadava5

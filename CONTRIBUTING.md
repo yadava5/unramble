@@ -19,22 +19,37 @@ Loading it once also writes the engine's type declarations into `.claude-plugin/
 ## Check
 
 ```sh
-npm test                    # validate + plugin tests + installer tests
+npm test                    # guard + validate + plugin tests + installer and guard tests
 npx -p typescript tsc -p .  # type-check (after one --plugin-dir load)
 ```
 
 CI runs the same on the pinned Claude Code version and, as a non-blocking canary, on the
 latest release: the plugin API is early access and can move.
 
-## Releasing
+## How a change lands
 
-The plugin ships from this repository's default branch; npm carries only the installer
-(`cli/unramble.mjs` and the keybinding merge it shares with the plugin).
+1. Fork the repository, make a branch, and open a pull request against `main`.
+2. CI runs the tests on Linux, macOS and Windows, plus the security checks: the guard, a
+   workflow audit and dependency review. A first-time contributor's run starts once the
+   maintainer approves it.
+3. The maintainer reviews and merges. `main` takes changes only this way.
+
+`scripts/guard.mjs` fails on anything that widens what the shipped code can reach: a network
+host, a process, an engine capability (`$.noun`), a dependency or install script, invisible
+Unicode, a binary outside `assets/`, an action not pinned to a commit. If your change really
+needs one, widen the rule in the same pull request and say why; that line gets the closest
+review. `npm run guard` runs it locally.
+
+## Releasing (maintainer)
+
+The plugin ships from `main`; npm carries only the installer (`cli/unramble.mjs` and the
+keybinding merge it shares with the plugin).
 
 1. Bump `version` in `package.json` and `.claude-plugin/plugin.json`, and add a CHANGELOG entry.
-2. Tag and push: `git tag v1.2.3 && git push origin v1.2.3`.
-3. `.github/workflows/release.yml` runs the tests and publishes to npm through trusted
-   publishing, with provenance. No npm token exists anywhere.
+2. Tag the merged commit on `main` and push the tag: `git tag v1.2.3 && git push origin v1.2.3`.
+3. `.github/workflows/release.yml` checks the tag is on `main` and matches both versions, runs
+   every test, then waits for approval of the `npm` environment. Approving it publishes through
+   trusted publishing, with provenance. No npm token exists anywhere.
 
 ## Changing the rules
 
