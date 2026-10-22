@@ -10,19 +10,6 @@ export const REFINED = `The login page is broken again, I think: when you hit su
 Constraints:
 - Don't touch the database migrations; we're mid deploy.`;
 
-// Phrases of ROUGH that have no counterpart in REFINED, in reading order. The
-// before/after beat strikes exactly these; rewording ("that's" → "which is") is not struck.
-export const DROPPED = [
-  "okay so um",
-  "like",
-  "just",
-  "can you",
-  "the auth handler, uh no wait, not the handler,",
-  "and then",
-  "oh and",
-  "kind of",
-];
-
 export const BAND = {
   ready: "⌃G refine",
   refining: "refining…",
@@ -43,6 +30,3 @@ export const INSTALL = {
   },
 } as const;
 export type InstallPath = (typeof INSTALL)[keyof typeof INSTALL];
-
-export const REPO = "github.com/yadava5/unramble";
-export const NPM = "npmjs.com/package/unramble";

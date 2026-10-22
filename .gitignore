@@ -4,9 +4,6 @@
 node_modules/
 video/node_modules/
 video/out/
-# launch material rendered from video/, kept out of the repo
-assets/linkedin.mp4
-assets/linkedin-cover.png
 *.log
 .DS_Store
 *.unramble-backup
