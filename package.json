@@ -1,0 +1,36 @@
+{
+  "name": "unramble",
+  "version": "1.0.0",
+  "description": "Ctrl+G turns a rambling, dictated prompt into a clean, ordered one, in place, on your own Claude Code plan.",
+  "keywords": [
+    "claude-code",
+    "claude-code-plugin",
+    "dictation",
+    "voice",
+    "prompt",
+    "rewrite"
+  ],
+  "homepage": "https://github.com/yadava5/unramble#readme",
+  "bugs": "https://github.com/yadava5/unramble/issues",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yadava5/unramble.git"
+  },
+  "license": "MIT",
+  "author": "Ayush Yadav (https://github.com/yadava5)",
+  "type": "module",
+  "bin": {
+    "unramble": "cli/unramble.mjs"
+  },
+  "files": [
+    "cli/unramble.mjs",
+    "hooks/keybindings.js"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test": "claude plugin validate . && claude plugin test . && node --test cli/*.test.mjs",
+    "test:cli": "node --test cli/*.test.mjs"
+  }
+}
