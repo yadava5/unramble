@@ -36,25 +36,33 @@ type Settings = { engine: string; model: string; vocabulary: string; apiKey: str
 
 const settingsOf = (options: Readonly<Record<string, unknown>>): Settings => ({
   engine: options.engine === 'api' ? 'api' : 'plan',
-  model: typeof options.model === 'string' && options.model ? options.model : 'sonnet',
+  model: options.model === 'opus' ? 'opus' : 'sonnet',
   vocabulary: typeof options.vocabulary === 'string' ? options.vocabulary : '',
   apiKey: typeof options.apiKey === 'string' ? options.apiKey : '',
 })
 
-async function keybindingsPath($: EngineInterface): Promise<string> {
+const isAbsolute = (p: string) => p.startsWith('/') || /^[A-Za-z]:[\\/]/.test(p) || p.startsWith('\\\\')
+
+/** keybindings.json beside Claude Code's config; null unless that folder is an absolute path. */
+async function keybindingsPath($: EngineInterface): Promise<string | null> {
   const dir = await $.env.get('CLAUDE_CONFIG_DIR')
-  if (dir) return `${dir.replace(/[\\/]+$/, '')}/keybindings.json`
-  const home = (await $.env.get('HOME')) ?? (await $.env.get('USERPROFILE')) ?? '~'
-  return `${home}/.claude/keybindings.json`
+  const home = (await $.env.get('HOME')) ?? (await $.env.get('USERPROFILE'))
+  const config = dir ? dir.replace(/[\\/]+$/, '') : home ? `${home}/.claude` : null
+  return config && isAbsolute(config) ? `${config}/keybindings.json` : null
 }
 
-async function readKeybindings($: EngineInterface): Promise<{ path: string; text: string | null }> {
+const NO_CONFIG = 'Could not find Claude Code’s config folder (no absolute CLAUDE_CONFIG_DIR or home folder), so nothing was changed.'
+
+async function readKeybindings($: EngineInterface): Promise<{ path: string; text: string | null } | null> {
   const path = await keybindingsPath($)
+  if (!path) return null
   return { path, text: (await $.fs.exists(path)) ? await $.fs.read(path) : null }
 }
 
 async function setup($: EngineInterface): Promise<string> {
-  const { path, text } = await readKeybindings($)
+  const found = await readKeybindings($)
+  if (!found) return NO_CONFIG
+  const { path, text } = found
   let current
   try {
     current = parse(text)
@@ -69,8 +77,9 @@ async function setup($: EngineInterface): Promise<string> {
   if (next.kind === 'conflict') {
     return `Changed nothing: ${next.why}.\nTo use Ctrl+G for unramble, remove that binding from ${path} and run /unramble setup again.`
   }
+  // the first backup is the person's own file; running setup again never replaces it
   const backup = `${path}.unramble-backup`
-  if (text !== null) await $.fs.write(backup, text)
+  if (text !== null && !(await $.fs.exists(backup))) await $.fs.write(backup, text)
   await $.fs.write(path, serialize(next.file))
   await update($, isKeyBound, () => true)
   return [
@@ -81,10 +90,11 @@ async function setup($: EngineInterface): Promise<string> {
 }
 
 async function status($: EngineInterface, s: Settings): Promise<string> {
-  const { path, text } = await readKeybindings($)
+  const found = await readKeybindings($)
+  const path = found?.path ?? 'keybindings.json'
   let bound = false
   try {
-    bound = isBound(parse(text))
+    bound = found ? isBound(parse(found.text)) : false
   } catch {}
   const names = s.vocabulary.split(/[,\n]/).filter(n => n.trim()).length
   return [
@@ -185,8 +195,8 @@ export const register: Register = (on, options) => {
       argumentHint: 'setup | status',
     })
     try {
-      const { text } = await readKeybindings($)
-      await update($, isKeyBound, () => isBound(parse(text)))
+      const found = await readKeybindings($)
+      await update($, isKeyBound, () => (found ? isBound(parse(found.text)) : false))
     } catch {
       await update($, isKeyBound, () => false)
     }

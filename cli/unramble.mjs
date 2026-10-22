@@ -11,14 +11,26 @@
 import { spawnSync } from 'node:child_process'
 import { copyFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
-import { join } from 'node:path'
+import { isAbsolute, join, resolve } from 'node:path'
 
 import { isBound, parse, plan, serialize, unplan } from '../hooks/keybindings.js'
 
-const MARKETPLACE = process.env.UNRAMBLE_MARKETPLACE || 'yadava5/unramble'
+// UNRAMBLE_MARKETPLACE points the installer at a fork or a local checkout (CI uses it). On
+// Windows the argument passes through cmd.exe, so only plain repo names and paths are taken.
+const override = process.env.UNRAMBLE_MARKETPLACE
+if (override && (!/^[\w@./:\\ ~#-]+$/.test(override) || override.startsWith('-'))) {
+  process.stderr.write('unramble: UNRAMBLE_MARKETPLACE must be owner/repo or a folder path\n')
+  process.exit(1)
+}
+const MARKETPLACE = override ? (existsSync(override) ? resolve(override) : override) : 'yadava5/unramble'
 const PLUGIN = 'unramble'
 const configDir = process.env.CLAUDE_CONFIG_DIR || join(homedir(), '.claude')
+if (!isAbsolute(configDir)) {
+  process.stderr.write(`unramble: CLAUDE_CONFIG_DIR must be an absolute path (got ${configDir})\n`)
+  process.exit(1)
+}
 const keybindings = join(configDir, 'keybindings.json')
+const backup = `${keybindings}.unramble-backup`
 
 const say = (line = '') => process.stdout.write(`${line}\n`)
 const fail = line => {
@@ -26,11 +38,18 @@ const fail = line => {
   process.exit(1)
 }
 
-/** Runs `claude` with the person's own environment and terminal; true on success. */
+const windows = process.platform === 'win32'
+
+/**
+ * Runs `claude` with the person's own environment and terminal; true on success. It runs from
+ * the home folder: on Windows (where `claude` is a .cmd shim and needs the shell) cmd.exe looks
+ * in the current folder before PATH, so a `claude.cmd` in a cloned repo must never be the one run.
+ */
 function claude(args, { quiet = false } = {}) {
-  const r = spawnSync('claude', args, {
+  const r = spawnSync('claude', windows ? args.map(a => (a.includes(' ') ? `"${a}"` : a)) : args, {
+    cwd: homedir(),
     stdio: quiet ? 'pipe' : 'inherit',
-    shell: process.platform === 'win32',
+    shell: windows,
     encoding: 'utf8',
   })
   if (r.error?.code === 'ENOENT') {
@@ -48,6 +67,11 @@ function readKeys() {
   }
 }
 
+/** The first backup is the person's own file; a later install or uninstall never replaces it. */
+function keepBackup(text) {
+  if (text !== null && !existsSync(backup)) copyFileSync(keybindings, backup)
+}
+
 function bindKeys() {
   const { text, file } = readKeys()
   const next = plan(file)
@@ -57,7 +81,7 @@ function bindKeys() {
     say(`  Free that chord in ${keybindings}, then run /unramble setup in Claude Code.`)
     return
   }
-  if (text !== null) copyFileSync(keybindings, `${keybindings}.unramble-backup`)
+  keepBackup(text)
   writeFileSync(keybindings, serialize(next.file))
   say(`✓ Bound Ctrl+G in ${keybindings}${text !== null ? ' (backup: keybindings.json.unramble-backup)' : ''}`)
   for (const c of next.changes) say(`    ${c}`)
@@ -80,7 +104,7 @@ function uninstall() {
   const { text, file } = readKeys()
   const back = unplan(file)
   if (back.changes.length) {
-    if (text !== null) copyFileSync(keybindings, `${keybindings}.unramble-backup`)
+    keepBackup(text)
     writeFileSync(keybindings, serialize(back.file))
     say(`✓ Took back the Ctrl+G bindings in ${keybindings}`)
   }
