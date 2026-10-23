@@ -216,8 +216,8 @@ npx unramble update
 ```
 
 Or have Claude Code keep it current: in `/plugin`, open the `unramble` marketplace and turn on
-auto-update. Every change reaches `main` only through a reviewed pull request, so that is
-what auto-update follows.
+auto-update. That follows `main`, which outside changes reach only through a pull request the
+maintainer approves, and where every push runs the full public CI.
 
 ## Uninstall
 
@@ -245,9 +245,9 @@ requests are welcome: see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Security
 
-Every change reaches `main` through a reviewed pull request, releases publish only from a
-maintainer-approved tag with npm provenance, and CI fails any change that widens what the
-shipped code can reach. [SECURITY.md](SECURITY.md) lists exactly what the plugin touches and how
+Outside changes reach `main` only through a pull request the maintainer approves, every push
+runs the full public CI, releases publish only from a maintainer-approved tag with npm
+provenance, and CI fails any change that widens what the shipped code can reach. [SECURITY.md](SECURITY.md) lists exactly what the plugin touches and how
 to report a vulnerability privately.
 
 ## License

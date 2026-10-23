@@ -37,8 +37,10 @@ A rewrite replaces your draft only if it passes two checks in [`plugin/hooks/ref
 
 Anyone can propose a change; only the maintainer can merge one or publish a release.
 
-- `main` accepts changes only through a pull request that passes CI and is approved by the
-  code owner. Force pushes and deletion are blocked.
+- A change from anyone else reaches `main` only through a pull request that passes CI and is
+  approved by the code owner. The maintainer, the only admin, can push to `main` directly;
+  every push to `main` runs the same public CI on Linux, macOS and Windows. Force pushes and
+  deletion are blocked for everyone.
 - Release tags (`v*`) can be created only by the maintainer. Publishing to npm runs only from
   a tag on `main`, after the tests pass, and only once the maintainer approves the `npm`
   environment. It uses npm trusted publishing: there is no npm token to steal, and every
