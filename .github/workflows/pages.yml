@@ -32,7 +32,9 @@ jobs:
           cp site/bfc1f2ef756645e2513f674b2ca5dfa4.txt _site/
           cp assets/logo.svg assets/logo-dark.svg assets/wordmark.svg assets/wordmark-dark.svg \
              assets/demo.gif assets/social-preview.png _site/
-          cp video/public/fonts/InstrumentSans-Variable.ttf video/public/fonts/JetBrainsMono-Variable.ttf _site/fonts/
+          # Latin subsets of the video's fonts (axes kept), with the licence the OFL asks to travel with them
+          cp video/public/fonts/InstrumentSans-Variable.subset.ttf video/public/fonts/JetBrainsMono-Variable.subset.ttf \
+             video/public/fonts/InstrumentSans-OFL.txt video/public/fonts/JetBrainsMono-OFL.txt _site/fonts/
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           path: _site

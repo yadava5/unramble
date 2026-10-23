@@ -12,6 +12,7 @@
     <link rel="icon" href="logo.svg" type="image/svg+xml" />
     <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
+    <meta name="color-scheme" content="light dark" />
 
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="unramble" />
@@ -42,34 +43,49 @@
 
     <link
       rel="preload"
-      href="fonts/InstrumentSans-Variable.ttf"
+      href="fonts/InstrumentSans-Variable.subset.ttf"
       as="font"
       type="font/ttf"
       crossorigin
     />
+    <script>
+      // Before first paint: an explicit theme choice wins over the system one, both ways.
+      try {
+        const theme = localStorage.getItem("unramble-theme");
+        if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme;
+      } catch {}
+      document.documentElement.classList.add("js");
+    </script>
     <style>
       /* Same faces as video/src/theme.ts: Instrument Sans for every word a person reads,
-         JetBrains Mono only for what gets typed (commands, keys). */
+         JetBrains Mono only for what gets typed (commands, keys, the terminal). Subset to
+         Latin plus the terminal's glyphs (⌃ ● ❯); both keep their variable axes. Mono drops
+         its ligatures so `--` always stays two hyphens. TTF, because the repo guard admits
+         fonts only as .ttf; Pages gzips them. */
       @font-face {
         font-family: "Instrument Sans";
-        src: url("fonts/InstrumentSans-Variable.ttf") format("truetype");
+        src: url("fonts/InstrumentSans-Variable.subset.ttf") format("truetype");
         font-weight: 400 700;
         font-stretch: 75% 100%;
         font-display: swap;
       }
       @font-face {
         font-family: "JetBrains Mono";
-        src: url("fonts/JetBrainsMono-Variable.ttf") format("truetype");
+        src: url("fonts/JetBrainsMono-Variable.subset.ttf") format("truetype");
         font-weight: 100 800;
         font-display: swap;
       }
 
-      /* Monochrome. Contrast measured (WCAG 2 / APCA Lc), not estimated:
+      /* Monochrome, like the tile: the only accent is inversion. Contrast measured
+         (WCAG 2 / APCA Lc), not estimated:
            light  fg on bg 21.0 / 106.0 · dim on bg 7.23 / 85.1 · dim on raised 6.57 / 78.6
-                  border on bg 4.54 (non-text)
+                  t-dim on term 6.80 / 80.9 · t-dim on term-bar 6.17 / 74.4
+                  border on raised 4.13 · t-box on term 4.28 (non-text)
            dark   fg on bg 17.94 / -96.1 · dim on bg 11.18 / -66.9 · dim on raised 9.81 / -66.2
-                  border on raised 3.89 (non-text)
-           line is decorative only in both. */
+                  t-dim on term 9.44 / -61.1 · t-dim on term-bar 8.79 / -60.5
+                  border on raised 3.89 · t-box on term 3.45 (non-text)
+           keycaps #000 on #fff 21.0 / 106.0, pressed on #e6e6e6 16.83 / 91.3.
+           line, dot and spot are decorative only in both. */
       :root {
         color-scheme: light;
         --bg: #ffffff;
@@ -81,6 +97,19 @@
         --cta-bg: #000000;
         --cta-fg: #ffffff;
         --cta-hover: #2b2b2b;
+        /* The terminal follows the page, the way the logo tile inverts with it. */
+        --term: #f8f8f8;
+        --term-bar: #ededed;
+        --t-fg: #000000;
+        --t-dim: #575757;
+        --t-box: #767676;
+        --dot: #c4c4c4;
+        --spot: #ececec;
+        /* Keycaps are paper in both themes, as in the video: a physical key, not a button. */
+        --cap: #ffffff;
+        --cap-down: #e6e6e6;
+        --cap-wall: #8c8c8c;
+        --cap-edge: #767676;
         --light-only: block;
         --dark-only: none;
         --sans: "Instrument Sans", "Helvetica Neue", Arial, sans-serif;
@@ -88,6 +117,8 @@
         /* The logo tile's corner: 14.5 on a 64 square. The install button is that tile. */
         --tile: 4rem;
         --tile-radius: 0.90625rem;
+        --ease: cubic-bezier(0.22, 1, 0.36, 1);
+        --section: clamp(5rem, 3rem + 5vw, 8rem);
       }
       @media (prefers-color-scheme: dark) {
         :root:not([data-theme="light"]) {
@@ -101,6 +132,14 @@
           --cta-bg: #ffffff;
           --cta-fg: #000000;
           --cta-hover: #d6d6d6;
+          --term: #0a0a0a;
+          --term-bar: #141414;
+          --t-fg: #ededed;
+          --t-dim: #b3b3b3;
+          --t-box: #666666;
+          --dot: #333333;
+          --spot: #171717;
+          --cap-edge: #ffffff;
           --light-only: none;
           --dark-only: block;
         }
@@ -116,6 +155,14 @@
         --cta-bg: #ffffff;
         --cta-fg: #000000;
         --cta-hover: #d6d6d6;
+        --term: #0a0a0a;
+        --term-bar: #141414;
+        --t-fg: #ededed;
+        --t-dim: #b3b3b3;
+        --t-box: #666666;
+        --dot: #333333;
+        --spot: #171717;
+        --cap-edge: #ffffff;
         --light-only: none;
         --dark-only: block;
       }
@@ -125,8 +172,12 @@
       *::after {
         box-sizing: border-box;
       }
+      html {
+        -webkit-text-size-adjust: 100%;
+      }
       body {
         margin: 0;
+        overflow-x: clip;
         background: var(--bg);
         color: var(--fg);
         font: 400 1.0625rem/1.55 var(--sans);
@@ -143,6 +194,9 @@
       p,
       ul,
       ol,
+      dl,
+      dd,
+      pre,
       figure {
         margin: 0;
       }
@@ -163,6 +217,7 @@
         font-family: var(--mono);
         font-size: 0.875em;
         font-weight: 500;
+        font-variant-ligatures: none;
       }
       kbd {
         padding: 0.08em 0.32em 0.12em;
@@ -190,61 +245,127 @@
         width: min(100% - 2.5rem, 68rem);
         margin-inline: auto;
       }
-      .top {
-        padding-block: 1.75rem 0;
+
+      /* Headlines use Instrument Sans's width axis: condensed and tall, so the display voice
+         is the same family as the text and still clearly not the text. */
+      h1,
+      h2 {
+        font-stretch: 80%;
+        font-weight: 620;
+        text-wrap: balance;
       }
+      h2 {
+        font-size: clamp(1.875rem, 1.35rem + 1.5vw, 2.625rem);
+        line-height: 1.04;
+        letter-spacing: -0.018em;
+      }
+      h3 {
+        font-size: 1.0625rem;
+        font-weight: 600;
+        line-height: 1.35;
+      }
+      .lede {
+        max-width: 34em;
+        color: var(--dim);
+      }
+      .lede a,
+      .dim a {
+        color: var(--fg);
+      }
+
+      /* Top bar */
+      .top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding-block: 1.5rem 0;
+      }
+      .top > a {
+        display: flex;
+        border-radius: 0.5rem;
+      }
+      /* No display here: .on-light / .on-dark decide which wordmark shows. */
       .top img {
         height: 2.25rem;
         width: auto;
       }
+      .top nav {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.9375rem;
+        font-weight: 500;
+      }
+      .top nav a {
+        padding: 0.5rem 0.625rem;
+        text-decoration: none;
+        border-radius: 0.5rem;
+      }
+      .top nav a:hover {
+        text-decoration: underline;
+      }
+      .theme {
+        display: none;
+        place-items: center;
+        width: 2.5rem;
+        height: 2.5rem;
+        padding: 0;
+        border: 1px solid var(--line);
+        border-radius: 0.625rem;
+        background: transparent;
+        color: var(--fg);
+        cursor: pointer;
+      }
+      .js .theme {
+        display: grid;
+      }
+      .theme:hover {
+        border-color: var(--border);
+      }
+      .theme svg {
+        width: 1.125rem;
+        height: 1.125rem;
+      }
 
-      /* Hero: the sentence, then what it looks like, then the one thing to do. From 60rem the
-         demo and the button share a row so the button is on screen at 1024 wide. */
+      /* Hero: what it is, then the one thing to do, beside the product doing it. From 60rem
+         the two share a row, so at 1024 wide the button and the demo are both on screen. */
       .hero {
         display: grid;
-        gap: 2rem;
-        padding-block: 2.75rem 0;
+        gap: 2.75rem;
+        padding-block: clamp(2.5rem, 1.5rem + 3vw, 4.5rem) 0;
       }
       .hero h1 {
-        max-width: 23em;
-        font-size: clamp(1.625rem, 1.1rem + 2.2vw, 2.625rem);
-        font-weight: 600;
-        line-height: 1.14;
-        letter-spacing: -0.022em;
-        text-wrap: pretty;
+        font-size: clamp(2.375rem, 1.35rem + 3.6vw, 4.375rem);
+        line-height: 0.98;
+        letter-spacing: -0.026em;
       }
-      .hero h1 kbd {
-        padding: 0.04em 0.26em 0.08em;
-        font-size: 0.72em;
-        font-weight: 600;
-        letter-spacing: 0;
-        vertical-align: 0.1em;
-      }
-      /* The GIF carries its own near-black stage; the hairline makes its edge a decision on a
-         black page instead of a faint seam. */
-      .demo img {
+      .hero h1 span {
         display: block;
-        width: 100%;
-        height: auto;
-        border: 1px solid var(--line);
-        border-radius: 0.75rem;
+      }
+      .pitch {
+        display: grid;
+        align-content: start;
+        gap: 1.5rem;
+      }
+      .pitch .lede {
+        max-width: 30em;
+        font-size: 1.125rem;
+        line-height: 1.5;
       }
       .act {
         display: grid;
-        gap: 1rem;
+        gap: 0.875rem;
         justify-items: start;
+        margin-top: 0.5rem;
       }
       @media (min-width: 60rem) {
         .hero {
-          grid-template-columns: minmax(0, 1.8fr) minmax(16rem, 1fr);
-          column-gap: 3rem;
-          row-gap: 2.5rem;
+          grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.25fr);
+          column-gap: clamp(2.5rem, 4vw, 4.5rem);
+          align-items: start;
         }
-        .hero h1 {
-          grid-column: 1 / -1;
-        }
-        .act {
-          align-content: start;
+        .pitch {
           padding-top: 0.5rem;
         }
       }
@@ -283,43 +404,625 @@
         stroke-linejoin: round;
       }
       .note {
-        max-width: 34em;
+        max-width: 30em;
         color: var(--dim);
         font-size: 0.9375rem;
         line-height: 1.5;
-      }
-      .note + .note {
-        margin-top: -0.375rem;
       }
       .note a {
         color: var(--fg);
       }
 
-      .by-hand {
+      /* The terminal. A faithful copy of video/src/Terminal.tsx, drawn in real text so it is
+         crisp at any size, readable by a screen reader, and works in both themes. The soft
+         light behind it is the video's spotlight, the only lighting in the system. */
+      .stage {
         position: relative;
-        padding-top: 4.5rem;
+        display: grid;
+        gap: 1.25rem;
+        min-width: 0;
       }
-      h2 {
-        font-size: 1.3125rem;
-        font-weight: 600;
-        letter-spacing: -0.012em;
-        line-height: 1.25;
+      .stage::before {
+        content: "";
+        position: absolute;
+        /* Bleeds upwards only: a sideways bleed would widen the page on a phone. */
+        inset: -12% 0 0;
+        z-index: -1;
+        background: radial-gradient(60% 55% at 50% 38%, var(--spot), transparent 72%);
+        pointer-events: none;
       }
-      h3 {
+      .term {
+        --term-size: clamp(0.71875rem, 0.62rem + 0.36vw, 0.84375rem);
+        overflow: hidden;
+        border-radius: 1rem;
+        background: var(--term);
+        box-shadow:
+          0 0 0 1px var(--line),
+          0 2.5rem 6rem -2rem rgb(0 0 0 / 0.35);
+        color: var(--t-fg);
+        font: 400 var(--term-size) / 1.5 var(--mono);
+        font-variant-ligatures: none;
+      }
+      .term-bar {
+        position: relative;
+        display: flex;
+        align-items: center;
+        gap: 0.42em;
+        height: 2.6em;
+        padding-inline: 0.95em;
+        border-bottom: 1px solid var(--line);
+        background: var(--term-bar);
+      }
+      .term-bar i {
+        width: 0.7em;
+        height: 0.7em;
+        border-radius: 50%;
+        background: var(--dot);
+      }
+      .term-bar span {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        color: var(--t-dim);
+        font: 500 0.9em var(--sans);
+      }
+      .term-body {
+        display: grid;
+        padding: 0.9em 1.25em 1.1em;
+      }
+      .term-body p {
+        white-space: pre-wrap;
+      }
+      .t-dim {
+        color: var(--t-dim);
+      }
+      /* The three band labels share one cell; only the current state's is visible. */
+      .term-body .band {
+        display: grid;
+        margin-top: 1.5em;
+        padding-left: 1ch;
+        color: var(--t-dim);
+        white-space: nowrap;
+      }
+      .band > span {
+        grid-area: 1 / 1;
+        transition: opacity 160ms ease;
+      }
+      .term:not([data-state="rough"]) .band-ready,
+      .term:not([data-state="refining"]) .band-refining,
+      .term:not([data-state="refined"]) .band-refined {
+        opacity: 0;
+      }
+      .box {
+        display: grid;
+        grid-template-columns: 2ch minmax(0, 1fr);
+        padding: 0.6em 1ch;
+        border: 2px solid var(--t-box);
+        border-radius: 0.625rem;
+      }
+      .box > .t-dim {
+        line-height: 1.5;
+      }
+      /* Both drafts share one cell, so the box is as tall as the longer one and the page
+         never moves when the rewrite lands. */
+      .drafts {
+        display: grid;
+        min-width: 0;
+      }
+      .draft {
+        grid-area: 1 / 1;
+        min-width: 0;
+        font: inherit;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        transition:
+          opacity 260ms ease,
+          filter 260ms ease,
+          visibility 0s linear 0s;
+      }
+      /* The video fades the draft to half while it refines; half measured Lc -32.7 on the dark
+         terminal, so it steps down to the terminal's dim grey instead, which stays legible. */
+      .term[data-state="refining"] .rough {
+        color: var(--t-dim);
+      }
+      .term[data-state="refined"] .rough,
+      .term:not([data-state="refined"]) .refined {
+        visibility: hidden;
+        opacity: 0;
+        transition:
+          opacity 200ms ease,
+          filter 200ms ease,
+          visibility 0s linear 200ms;
+      }
+      .term[data-state="refined"] .rough {
+        filter: blur(3px);
+      }
+      .term[data-state="refined"] .refined {
+        animation: land 420ms var(--ease) 120ms backwards;
+      }
+      @keyframes land {
+        from {
+          opacity: 0;
+          transform: translateY(0.4em);
+        }
+      }
+      .caret {
+        display: inline-block;
+        width: 1ch;
+        height: 1.15em;
+        margin-left: 0.1ch;
+        vertical-align: -0.22em;
+        background: var(--t-fg);
+      }
+      .term[data-state="refining"] .caret {
+        visibility: hidden;
+      }
+      .hint {
+        padding-left: 1ch;
+        color: var(--t-dim);
+      }
+      .toast {
+        justify-self: start;
+        max-width: 100%;
+        margin-top: 1.25em;
+        padding: 0.45em 1.2ch;
+        border: 1px solid var(--t-box);
+        border-radius: 0.625rem;
+        background: var(--term-bar);
+        font-size: 0.86em;
+        transition:
+          opacity 300ms ease,
+          transform 300ms var(--ease);
+      }
+      .term:not([data-state="refined"]) .toast {
+        opacity: 0;
+        transform: translateY(0.75em);
+      }
+      .toast b {
+        font-weight: 400;
+      }
+
+      /* The chord, as the video draws it: paper keys on a grey wall that travel when pressed. */
+      .try {
+        display: none;
+        justify-self: start;
+        align-items: center;
+        gap: 1rem;
+        padding: 0.25rem 0.75rem 0.25rem 0.25rem;
+        border: 0;
+        border-radius: 0.875rem;
+        background: none;
+        color: var(--fg);
+        font: 600 1.0625rem/1.25 var(--sans);
+        text-align: left;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+      }
+      .js .try {
+        display: inline-flex;
+      }
+      .caps {
+        --cap-size: 3.25rem;
+        --travel: 0.25rem;
+        display: flex;
+        flex: none;
+        gap: 0.5rem;
+        padding-bottom: var(--travel);
+      }
+      .cap {
+        position: relative;
+        height: var(--cap-size);
+        border: 1px solid var(--cap-edge);
+        border-radius: 0.65rem;
+        background: var(--cap);
+        box-shadow: 0 var(--travel) 0 var(--cap-wall);
+        color: #000000;
+        transition:
+          transform 70ms ease-out,
+          box-shadow 70ms ease-out,
+          background-color 70ms ease-out;
+      }
+      .cap-ctrl {
+        width: calc(var(--cap-size) * 1.55);
+      }
+      .cap-ctrl b {
+        position: absolute;
+        top: 0.1rem;
+        right: 0.5rem;
+        font: 500 1.35rem var(--mono);
+      }
+      .cap-ctrl span {
+        position: absolute;
+        bottom: 0.4rem;
+        left: 0.5rem;
+        font: 500 0.6875rem/1 var(--sans);
+      }
+      .cap-g {
+        display: grid;
+        place-items: center;
+        width: var(--cap-size);
+        font: 600 1.5rem var(--sans);
+      }
+      .try:active .cap,
+      .try.is-down .cap {
+        transform: translateY(var(--travel));
+        background: var(--cap-down);
+        box-shadow: 0 0 0 var(--cap-wall);
+      }
+      .try:hover .try-label {
+        text-decoration: underline;
+        text-decoration-thickness: 1px;
+        text-underline-offset: 0.18em;
+      }
+      .try-label small {
+        display: block;
+        margin-top: 0.125rem;
+        color: var(--dim);
+        font-size: 0.875rem;
+        font-weight: 400;
+      }
+      .stage figcaption {
+        max-width: 38em;
+        color: var(--dim);
+        font-size: 0.875rem;
+        line-height: 1.5;
+      }
+
+      /* Sections: a heading column that stays in view while its content scrolls past. */
+      main > section + section {
+        margin-top: var(--section);
+      }
+      .sec {
+        display: grid;
+        gap: 1.75rem;
+      }
+      .sec-head {
+        display: grid;
+        gap: 0.875rem;
+        align-content: start;
+      }
+      @media (min-width: 56rem) {
+        .sec {
+          grid-template-columns: minmax(0, 0.8fr) minmax(0, 2fr);
+          column-gap: clamp(2.5rem, 5vw, 5rem);
+        }
+        /* Only beside a column: a full-width section's head would slide over its own content */
+        .sec > .sec-head {
+          position: sticky;
+          top: 2rem;
+          align-self: start;
+        }
+      }
+
+      /* What changed: the launch video's before and after, struck phrase by phrase. The line
+         is a background, so a cut that wraps onto the next line keeps drawing across it. */
+      .changed {
+        display: grid;
+        gap: 2rem;
+      }
+      .changed .sec-head {
+        max-width: 40rem;
+      }
+      .sides {
+        display: grid;
+        gap: 1rem;
+      }
+      @media (min-width: 52rem) {
+        .sides {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+      .side {
+        display: grid;
+        align-content: start;
+        gap: 0.875rem;
+        padding: 1.25rem 1.375rem 1.5rem;
+        border: 1px solid var(--line);
+        border-radius: 1rem;
+        background: var(--raised);
+      }
+      .side h3 {
+        color: var(--dim);
+        font-weight: 500;
+      }
+      .side p,
+      .side pre {
+        font: 400 0.875rem/1.6 var(--mono);
+        font-variant-ligatures: none;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+      }
+      .said del {
+        --stroke: 1.5px;
+        color: var(--dim);
+        text-decoration: none;
+        background: linear-gradient(currentColor, currentColor) no-repeat 0 58% / 100%
+          var(--stroke);
+        transition:
+          background-size 380ms var(--ease) calc(var(--i, 0) * 150ms + 100ms),
+          color 380ms ease calc(var(--i, 0) * 150ms + 100ms);
+      }
+      .said.undrawn del {
+        color: var(--fg);
+        background-size: 0% var(--stroke);
+      }
+      /* The one cut that should not have happened: boxed, so it reads without colour. */
+      del.loss {
+        padding-inline: 0.15em;
+        border-radius: 0.25em;
+        box-shadow: inset 0 0 0 1px var(--fg);
+      }
+      .gets pre {
+        color: var(--fg);
+      }
+      .notes {
+        display: grid;
+        gap: 1.25rem 2.5rem;
+        padding: 0;
+        list-style: none;
+      }
+      @media (min-width: 40rem) {
+        .notes {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+      .notes li {
+        max-width: 32em;
+        color: var(--dim);
+        font-size: 0.9375rem;
+      }
+      .notes strong {
+        display: block;
+        margin-bottom: 0.125rem;
+        color: var(--fg);
         font-size: 1.0625rem;
         font-weight: 600;
-        line-height: 1.35;
       }
+      .swatch {
+        font-family: var(--mono);
+        font-size: 0.875em;
+      }
+      .swatch del {
+        color: var(--dim);
+        text-decoration: line-through 1.5px;
+      }
+
+      /* How faithful: 39 prompts across, two runs down. One square, one judged rewrite. */
+      .scores {
+        display: grid;
+        gap: 2.25rem;
+      }
+      .score {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: end;
+        gap: 0.25rem 1rem;
+      }
+      .score h3 {
+        grid-column: 1 / -1;
+        color: var(--dim);
+        font-weight: 500;
+      }
+      .figure {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        column-gap: 0.625rem;
+      }
+      .figure b {
+        font-size: clamp(2.5rem, 1.9rem + 1.8vw, 3.5rem);
+        font-stretch: 80%;
+        font-weight: 620;
+        font-variant-numeric: tabular-nums;
+        line-height: 1;
+        letter-spacing: -0.02em;
+      }
+      .median {
+        color: var(--dim);
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+      }
+      .median b {
+        color: var(--fg);
+        font-weight: 600;
+      }
+      .squares {
+        display: grid;
+        grid-column: 1 / -1;
+        grid-template-columns: repeat(39, minmax(0, 1fr));
+        gap: clamp(2px, 0.35vw, 4px);
+        margin-top: 0.75rem;
+      }
+      .squares i {
+        aspect-ratio: 1;
+        border-radius: 1.5px;
+        background: var(--fg);
+      }
+      .squares i.miss {
+        background: transparent;
+        box-shadow: inset 0 0 0 1.5px var(--fg);
+      }
+      .key {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.375rem 1.25rem;
+        color: var(--dim);
+        font-size: 0.875rem;
+      }
+      .key span {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+      .key i {
+        width: 0.625rem;
+        height: 0.625rem;
+        border-radius: 1.5px;
+        background: var(--fg);
+      }
+      .key i.miss {
+        background: transparent;
+        box-shadow: inset 0 0 0 1.5px var(--fg);
+      }
+      .body {
+        display: grid;
+        align-content: start;
+        gap: 2rem;
+        min-width: 0;
+      }
+      .body > p {
+        max-width: 38em;
+      }
+      .caveats {
+        display: grid;
+        gap: 0.625rem;
+        max-width: 38em;
+        padding-left: 1.1em;
+        color: var(--dim);
+        font-size: 0.9375rem;
+      }
+      .caveats li::marker {
+        color: var(--border);
+      }
+      .caveats a {
+        color: var(--fg);
+      }
+
+      /* Promises and limits: a lead you can scan, then the detail. */
+      .claims {
+        display: grid;
+        gap: 1.5rem 2.5rem;
+        padding: 0;
+        list-style: none;
+      }
+      @media (min-width: 40rem) {
+        .claims.two {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+      .claims li {
+        max-width: 36em;
+        color: var(--dim);
+      }
+      .claims strong {
+        display: block;
+        color: var(--fg);
+        font-weight: 600;
+      }
+
+      /* What it touches */
+      .touches {
+        display: grid;
+        gap: 0.25rem 1.5rem;
+        max-width: 42em;
+      }
+      .touches dd + dt {
+        margin-top: 0.875rem;
+      }
+      @media (min-width: 40rem) {
+        .touches {
+          grid-template-columns: 5.5rem minmax(0, 1fr);
+          row-gap: 1.125rem;
+        }
+        .touches dd + dt {
+          margin-top: 0;
+        }
+      }
+      .touches dt {
+        font-weight: 600;
+      }
+      .touches dd {
+        color: var(--dim);
+      }
+      .touches code,
+      .claims code,
+      .caveats code,
+      .lede code {
+        color: var(--fg);
+        overflow-wrap: anywhere;
+      }
+
+      /* Where it is tested. Wide content scrolls inside its own box, never the page. */
+      .scroll {
+        overflow-x: auto;
+        border: 1px solid var(--line);
+        border-radius: 1rem;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.9375rem;
+      }
+      th,
+      td {
+        padding: 0.75rem 1rem;
+        text-align: left;
+        vertical-align: top;
+      }
+      thead th {
+        color: var(--dim);
+        font-weight: 500;
+        background: var(--raised);
+      }
+      tbody th {
+        font-weight: 600;
+      }
+      tbody tr + tr > * {
+        border-top: 1px solid var(--line);
+      }
+      td {
+        color: var(--dim);
+      }
+      td code {
+        color: var(--fg);
+      }
+      /* On a phone three columns become one word wide, so each row restacks: the terminal,
+         then how the key arrives and what worked, labelled. The markup carries explicit table
+         roles because some browsers drop table semantics once display changes. */
+      @media (max-width: 40rem) {
+        thead {
+          position: absolute;
+          width: 1px;
+          height: 1px;
+          overflow: hidden;
+          clip-path: inset(50%);
+        }
+        tbody tr {
+          display: grid;
+          gap: 0.375rem;
+          padding: 0.875rem 1rem;
+        }
+        tbody tr + tr {
+          border-top: 1px solid var(--line);
+        }
+        tbody tr + tr > * {
+          border-top: 0;
+        }
+        tbody th,
+        tbody td {
+          padding: 0;
+        }
+        tbody td::before {
+          content: attr(data-label) ": ";
+          color: var(--fg);
+          font-weight: 500;
+        }
+      }
+
+      /* Install by hand */
       .ways {
         display: grid;
         gap: 2rem;
-        margin-top: 1.5rem;
       }
       @media (min-width: 48rem) {
         .ways {
           grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
           gap: 2.5rem;
         }
+      }
+      .way {
+        min-width: 0;
       }
       .way > p {
         margin-top: 0.25rem;
@@ -376,61 +1079,15 @@
         color: var(--bg);
       }
       .after {
-        margin-top: 1.75rem;
-        font-size: 0.9375rem;
-        color: var(--dim);
-      }
-
-      .facts {
-        display: grid;
-        gap: 2rem;
-        padding-top: 5rem;
-      }
-      @media (min-width: 48rem) {
-        .facts {
-          grid-template-columns: repeat(3, minmax(0, 1fr));
-          gap: 2.5rem;
-        }
-      }
-      .facts h3 {
-        font-size: 1.3125rem;
-        letter-spacing: -0.012em;
-        line-height: 1.25;
-        text-wrap: balance;
-      }
-      .facts p {
-        margin-top: 0.5rem;
+        max-width: 42em;
         color: var(--dim);
         font-size: 0.9375rem;
       }
-      .facts p a {
-        color: var(--fg);
-      }
-
-      .wont {
+      /* Side by side only when both commands fit their chips whole. */
+      .later {
         display: grid;
-        gap: 1rem;
-        padding-top: 4rem;
-      }
-      @media (min-width: 48rem) {
-        .wont {
-          grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
-          gap: 2.5rem;
-        }
-      }
-      .wont ul {
-        display: grid;
-        gap: 0.75rem;
-        max-width: 40em;
-        padding-left: 1.1em;
-        color: var(--dim);
-      }
-      .wont li::marker {
-        color: var(--border);
-      }
-      .wont strong {
-        color: var(--fg);
-        font-weight: 600;
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 21rem), 1fr));
+        gap: 2rem 2.5rem;
       }
 
       .foot {
@@ -439,7 +1096,7 @@
         align-items: center;
         justify-content: space-between;
         gap: 1rem 2rem;
-        margin-top: 5rem;
+        margin-top: var(--section);
         padding-block: 1.75rem 2.5rem;
         border-top: 1px solid var(--line);
         font-size: 0.9375rem;
@@ -462,17 +1119,54 @@
         list-style: none;
       }
 
-      /* The one moment on load: the mark inside the button draws itself, loop to line. The
-         drawn mark is the resting state, so a paused or skipped animation still shows it. */
+      /* Motion. On load, one moment: the mark inside the button draws itself, loop to line.
+         The drawn mark is the resting state, so a paused or skipped animation still shows it.
+         Everything else moves only because someone pressed Ctrl+G, except the struck phrases,
+         which draw once as the comparison comes into view. */
       @media (prefers-reduced-motion: no-preference) {
         .install path {
           stroke-dasharray: 1 2;
           animation: unravel 1.1s cubic-bezier(0.65, 0, 0.35, 1) 0.3s backwards;
         }
+        .term[data-state="rough"] .caret,
+        .term[data-state="refined"] .caret {
+          animation: blink 1.06s steps(1) infinite;
+        }
+        /* While refining, a highlight sweeps the band, as in the plugin. It only ever moves
+           the dim grey towards full contrast, never below it. */
+        .band-refining b {
+          background: linear-gradient(
+              90deg,
+              var(--t-dim) 0 35%,
+              var(--t-fg) 50%,
+              var(--t-dim) 65% 100%
+            )
+            0 0 / 300% 100%;
+          -webkit-background-clip: text;
+          background-clip: text;
+          color: transparent;
+          animation: sweep 0.9s linear infinite;
+        }
+      }
+      .band-refining b {
+        font-weight: 400;
       }
       @keyframes unravel {
         from {
           stroke-dashoffset: 1.01;
+        }
+      }
+      @keyframes blink {
+        50% {
+          opacity: 0;
+        }
+      }
+      @keyframes sweep {
+        from {
+          background-position: 100% 0;
+        }
+        to {
+          background-position: 0 0;
         }
       }
       @media (prefers-reduced-motion: reduce) {
@@ -481,138 +1175,510 @@
           transition: none;
           transform: none;
         }
+        .draft,
+        .toast,
+        .cap,
+        .band > span,
+        .said del {
+          transition: none !important;
+        }
+        .term[data-state="refined"] .refined {
+          animation: none;
+        }
+        .term[data-state="refined"] .rough {
+          filter: none;
+        }
+        .toast {
+          transform: none !important;
+        }
       }
     </style>
   </head>
   <body>
     <header class="wrap top">
-      <img class="on-light" src="wordmark.svg" alt="unramble" width="174" height="36" />
-      <img class="on-dark" src="wordmark-dark.svg" alt="unramble" width="174" height="36" />
+      <a href="https://github.com/yadava5/unramble" aria-label="unramble on GitHub">
+        <img class="on-light" src="wordmark.svg" alt="unramble" width="174" height="36" />
+        <img class="on-dark" src="wordmark-dark.svg" alt="unramble" width="174" height="36" />
+      </a>
+      <nav aria-label="Site">
+        <a href="https://github.com/yadava5/unramble">GitHub</a>
+        <button class="theme" type="button" aria-label="Switch theme">
+          <svg viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+            <circle cx="10" cy="10" r="7.25" fill="none" stroke="currentColor" stroke-width="1.5" />
+            <path d="M10 2.75a7.25 7.25 0 0 1 0 14.5Z" fill="currentColor" />
+          </svg>
+        </button>
+      </nav>
     </header>
 
     <main class="wrap">
       <section class="hero" aria-labelledby="pitch">
-        <h1 id="pitch">
-          Press <kbd>Ctrl+G</kbd> and the rambling prompt you just dictated becomes the one you
-          meant to type&nbsp;— in place, inside Claude Code, on the plan you already have.
-        </h1>
-
-        <figure class="demo">
-          <img
-            src="demo.gif"
-            width="1200"
-            height="675"
-            alt="A rough dictated prompt is typed into Claude Code, Ctrl+G is pressed, the band reads refining, and three seconds later the box holds a clean numbered prompt"
-          />
-        </figure>
-
-        <div class="act">
-          <a
-            class="install"
-            href="claude-cli://install-plugin?plugin=unramble&amp;marketplace=yadava5/unramble"
-          >
-            <svg viewBox="0 0 64 64" aria-hidden="true" focusable="false">
-              <path
-                pathLength="1"
-                d="M11.5 38 C19.5 38 26.5 34 30 28 C33.5 22 31 12 24 12 C17 12 15 20 18.5 27 C21.5 33 28.5 38 37.5 38 H46 A6.5 6.5 0 0 1 46 51 H19.5"
-              />
-            </svg>
-            Install in Claude Code
-          </a>
-          <p class="note">
-            Opens Claude Code in your terminal with the install command typed in. Press Enter,
-            answer <kbd>y</kbd>, then run <code>/unramble setup</code> once. The plugin reminds
-            you.
+        <div class="pitch">
+          <h1 id="pitch">
+            <span>Dictate it rough.</span> <span>Press Ctrl+G.</span>
+            <span>Send what you meant.</span>
+          </h1>
+          <p class="lede">
+            unramble is a Claude Code plugin that rewrites the prompt you just dictated, in place:
+            fillers and false starts gone, your correction applied, separate asks numbered. Same
+            meaning, nothing added. Press Ctrl+G again and your original comes back. It runs on
+            your Claude Code plan, with no API key.
           </p>
-          <p class="note">
-            The first time, your browser may ask to open Claude Code. Needs
-            <a href="https://code.claude.com/docs/en/setup">Claude Code installed</a>.
-          </p>
+
+          <div class="act">
+            <a
+              class="install"
+              href="claude-cli://install-plugin?plugin=unramble&amp;marketplace=yadava5/unramble"
+            >
+              <svg viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+                <path
+                  pathLength="1"
+                  d="M11.5 38 C19.5 38 26.5 34 30 28 C33.5 22 31 12 24 12 C17 12 15 20 18.5 27 C21.5 33 28.5 38 37.5 38 H46 A6.5 6.5 0 0 1 46 51 H19.5"
+                />
+              </svg>
+              Install in Claude Code
+            </a>
+            <p class="note">
+              Opens Claude Code in your terminal with the install command typed in. Press Enter,
+              answer <kbd>y</kbd>, then run <code>/unramble setup</code> once. The plugin reminds
+              you.
+            </p>
+            <p class="note">
+              The first time, your browser may ask to open Claude Code. Needs
+              <a href="https://code.claude.com/docs/en/setup">Claude Code installed</a>. Or
+              <a href="#by-hand">install by hand</a>.
+            </p>
+          </div>
         </div>
-      </section>
 
-      <section class="by-hand" aria-labelledby="by-hand">
-        <h2 id="by-hand">Install by hand</h2>
-        <div class="ways">
-          <div class="way">
-            <h3>In your terminal</h3>
-            <p>zsh, bash or PowerShell. Needs Node 18+.</p>
-            <div class="steps">
-              <div class="cmd">
-                <code>npx unramble</code>
-                <button class="copy" type="button">
-                  <span class="copy-label">Copy</span><span class="sr-only"> npx unramble</span>
-                </button>
+        <figure class="stage" aria-label="A Claude Code terminal you can try unramble in">
+          <div class="term" id="term" data-state="rough">
+            <div class="term-bar" aria-hidden="true">
+              <i></i><i></i><i></i><span>shop-app</span>
+            </div>
+            <div class="term-body">
+              <p aria-hidden="true"><span class="t-dim">~/code/shop-app $ </span>claude</p>
+              <p class="band" aria-hidden="true">
+                <span class="band-ready">⌃G refine</span
+                ><span class="band-refining"><b>refining…</b> ⌃G cancels</span
+                ><span class="band-refined">⌃G original</span>
+              </p>
+              <div class="box">
+                <span class="t-dim" aria-hidden="true">&gt;</span>
+                <div class="drafts">
+                  <p class="draft rough">okay so um the login page is broken again I think, like when you hit submit it just spins forever. can you look at the auth handler, uh no wait, not the handler, the session middleware, that's what changed yesterday. and then once it works add a test for it so this doesn't happen again. oh and don't touch the database migrations, we're kind of mid deploy<span class="caret" aria-hidden="true"></span></p>
+                  <pre class="draft refined" aria-hidden="true">The login page is broken again, I think: when you hit submit, it spins forever.
+
+1. Look at the session middleware, which is what changed yesterday.
+2. Once it works, add a test for it so this doesn't happen again.
+
+Constraints:
+- Don't touch the database migrations; we're mid deploy.<span class="caret" aria-hidden="true"></span></pre>
+                </div>
               </div>
+              <p class="hint" aria-hidden="true">? for shortcuts</p>
+              <p class="toast" aria-hidden="true"><b>●</b> unramble: done in 3.3s with sonnet on your plan · ⌃G again restores your original</p>
             </div>
           </div>
-          <div class="way">
-            <h3>Or inside Claude Code</h3>
-            <p>One line at a time. No Node needed.</p>
-            <ol class="steps">
-              <li class="cmd">
-                <code>/plugin install unramble --marketplace yadava5/unramble</code>
-                <button class="copy" type="button">
-                  <span class="copy-label">Copy</span
-                  ><span class="sr-only"> the plugin install command</span>
-                </button>
-              </li>
-              <li class="cmd">
-                <code>/unramble setup</code>
-                <button class="copy" type="button">
-                  <span class="copy-label">Copy</span><span class="sr-only"> /unramble setup</span>
-                </button>
-              </li>
-            </ol>
+
+          <button class="try" id="try" type="button" aria-controls="term">
+            <span class="caps" aria-hidden="true">
+              <span class="cap cap-ctrl"><b>⌃</b><span>control</span></span>
+              <span class="cap cap-g">G</span>
+            </span>
+            <span class="try-label"
+              ><span id="try-action">Rewrite this prompt</span
+              ><small>Click the keys, or press Ctrl+G</small></span
+            >
+          </button>
+          <p class="sr-only" role="status" id="term-status"></p>
+
+          <figcaption>
+            A real rewrite, replayed in your browser at the speed it ran: Sonnet, on a Claude Code
+            plan, 3.3 s. Nothing here is sent anywhere.
+          </figcaption>
+        </figure>
+      </section>
+
+      <section class="changed" aria-labelledby="changed">
+        <div class="sec-head">
+          <h2 id="changed">Every word it took out</h2>
+          <p class="lede">
+            The same prompt, side by side. Struck phrases are the ones the rewrite dropped. Most
+            were filler. One was a loss.
+          </p>
+        </div>
+        <div class="sides">
+          <div class="side said-side">
+            <h3>What you said</h3>
+            <p class="said" id="said"><del style="--i: 0">okay so um</del> the login page is broken again I think, <del style="--i: 1">like</del> when you hit submit it <del style="--i: 2">just</del> spins forever. <del style="--i: 3">can you</del> look at <del style="--i: 4">the auth handler, uh no wait, not the handler,</del> the session middleware, that's what changed yesterday. <del style="--i: 5">and then</del> once it works add a test for it so this doesn't happen again. <del style="--i: 6">oh and</del> don't touch the database migrations, we're <del class="loss" style="--i: 7">kind of</del> mid deploy</p>
+          </div>
+          <div class="side gets">
+            <h3>What Claude Code gets</h3>
+            <pre>The login page is broken again, I think: when you hit submit, it spins forever.
+
+1. Look at the session middleware, which is what changed yesterday.
+2. Once it works, add a test for it so this doesn't happen again.
+
+Constraints:
+- Don't touch the database migrations; we're mid deploy.</pre>
           </div>
         </div>
-        <p class="after">
-          Either way, start a new Claude Code session afterwards, say or type a prompt, and press
-          <kbd>Ctrl+G</kbd>.
-        </p>
-        <p class="sr-only" role="status" id="copy-status"></p>
-      </section>
-
-      <section class="facts" aria-label="What to expect">
-        <div>
-          <h3>No API key</h3>
-          <p>
-            It runs on your Claude Code plan, through the login you already have. Each rewrite is
-            one short call.
-          </p>
-        </div>
-        <div>
-          <h3>It keeps your meaning</h3>
-          <p>
-            On 39 of the hardest real dictated prompts, two runs each, 76/78 rewrites kept their
-            meaning with Sonnet and 78/78 with Opus, judged by Claude Opus against a fixed rubric.
-            <a href="https://github.com/yadava5/unramble/blob/main/docs/BENCHMARKS.md"
-              >Benchmarks</a
-            >
-          </p>
-        </div>
-        <div>
-          <h3>Ctrl+G again restores your original</h3>
-          <p>
-            Press it on the rewrite and your draft comes back exactly. Press it while a rewrite
-            runs to cancel.
-          </p>
-        </div>
-      </section>
-
-      <section class="wont" aria-labelledby="wont">
-        <h2 id="wont">What it won’t do</h2>
-        <ul>
+        <ul class="notes">
           <li>
-            <strong>Add a link or a command you didn’t say.</strong> A rewrite that brings one in
-            is refused and your draft stays.
+            <strong>Fillers and false starts gone</strong>
+            <span class="swatch"><del>okay so um</del></span>, <span class="swatch"><del>like</del></span>,
+            <span class="swatch"><del>just</del></span>, <span class="swatch"><del>oh and</del></span>.
+          </li>
+          <li>
+            <strong>Your correction applied</strong>
+            You said the auth handler, took it back, and named the session middleware. The rewrite
+            keeps only what you meant.
+          </li>
+          <li>
+            <strong>Asks numbered, rules listed</strong>
+            The two things to do became steps. The thing not to do moved under
+            <em>Constraints</em>.
+          </li>
+          <li>
+            <strong>One loss</strong>
+            <span class="swatch"><del class="loss">kind of</del></span> mid deploy lost its
+            hedge. The <a href="https://github.com/yadava5/unramble/blob/main/docs/BENCHMARKS.md">benchmarks</a>
+            count that as a minor defect.
+          </li>
+        </ul>
+      </section>
+
+      <section class="sec" aria-labelledby="faithful">
+        <div class="sec-head">
+          <h2 id="faithful">How often it keeps your meaning</h2>
+          <p class="lede">
+            39 of the hardest real dictated prompts, each rewritten twice, with Claude Opus judging
+            every rewrite against a fixed rubric. A rewrite fails if Claude Code would act or
+            believe differently after reading it.
+          </p>
+        </div>
+        <div class="body">
+          <div class="scores">
+            <div class="score">
+              <h3>Sonnet, the default</h3>
+              <p class="figure"><b>76/78</b> kept the meaning</p>
+              <p class="median">median <b>3.0&nbsp;s</b></p>
+              <div
+                class="squares"
+                role="img"
+                aria-label="78 squares: 76 rewrites kept the meaning, 2 did not"
+              ><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="miss"></i><i class="miss"></i></div>
+            </div>
+            <div class="score">
+              <h3>Opus</h3>
+              <p class="figure"><b>78/78</b> kept the meaning</p>
+              <p class="median">median <b>3.2&nbsp;s</b></p>
+              <div
+                class="squares"
+                role="img"
+                aria-label="78 squares: all 78 rewrites kept the meaning"
+              ><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+            </div>
+            <p class="key" aria-hidden="true">
+              <span><i></i>Kept the meaning</span>
+              <span><i class="miss"></i>Changed it</span>
+              <span>One square per rewrite: 39 prompts across, two runs down, misses last</span>
+            </p>
+          </div>
+
+          <p>
+            Sonnet’s two misses, each on one run of a long dictation where the speech itself is
+            ambiguous: a garbled “both one” that most likely meant one person was applied to both,
+            and “engineered/developed”, offered as examples of strong verbs, came out as verbs to
+            avoid.
+          </p>
+
+          <ul class="caveats">
+            <li>
+              The set is every case that ever failed during tuning, so it is harder than everyday
+              speech.
+            </li>
+            <li>
+              It is one person’s speech, in English, about software. The
+              <a href="https://github.com/yadava5/unramble/blob/main/eval/README.md">eval kit</a>
+              runs the same check on yours.
+            </li>
+            <li>
+              78 rewrites is a small sample: a difference of one or two is noise. The judge is a
+              model, and can miss a subtle change.
+            </li>
+            <li>
+              Times were measured on the API. On a Claude Code plan, the demo rewrite took 3.3 s.
+            </li>
+            <li>Haiku was tried and dropped: 9 major errors in 17 prompts.</li>
+            <li>
+              <a href="https://github.com/yadava5/unramble/blob/main/docs/BENCHMARKS.md"
+                >Method and full tables</a
+              >
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="sec" aria-labelledby="wont">
+        <div class="sec-head">
+          <h2 id="wont">What it won’t do</h2>
+          <p class="lede">Every rewrite is checked before it replaces your text.</p>
+        </div>
+        <ul class="claims two">
+          <li>
+            <strong>Send anything you didn’t ask it to.</strong> Nothing leaves the box until you
+            press Ctrl+G.
+          </li>
+          <li>
+            <strong>Lose a machine value.</strong> A rewrite that drops a path,
+            <code>--flag</code>, number, URL, <code>@ref</code> or <code>[Pasted text]</code> chip
+            is refused and your draft stays, unless you corrected that value on the spot.
+          </li>
+          <li>
+            <strong>Add a link or a command you never said.</strong> A rewrite that brings one in
+            is refused. On 2,240 recorded rewrites, this check refused none.
           </li>
           <li>
             <strong>Touch pasted logs or code.</strong> They are masked before the model sees the
             draft and put back byte for byte.
           </li>
-          <li><strong>Send anything before you press Ctrl+G.</strong></li>
+          <li>
+            <strong>Answer your question or do the task.</strong> “Can you check X?” stays a
+            question for Claude Code.
+          </li>
+          <li>
+            <strong>Overwrite you.</strong> If you typed while it ran, your text wins.
+          </li>
         </ul>
+      </section>
+
+      <section class="sec" aria-labelledby="limits">
+        <div class="sec-head">
+          <h2 id="limits">Where it falls short</h2>
+        </div>
+        <ul class="claims">
+          <li>
+            <strong>Terminal UI only.</strong> It works in <code>claude</code> run in a terminal,
+            including the one inside VS Code or Cursor. The VS Code extension’s chat panel and the
+            desktop app are not supported.
+          </li>
+          <li>
+            <strong>Long pastes stay as chips.</strong> When a dictation app pastes a long block,
+            Claude Code folds it into a <code>[Pasted text #N]</code> chip that plugins cannot read
+            (as of 2.1.308), so that text is kept as is. Claude Code’s built-in voice input, macOS
+            Dictation and typing all work fully.
+          </li>
+          <li>
+            <strong>Garbled speech stays garbled.</strong> If the transcription is wrong in a way
+            context cannot fix, the rewrite keeps it as heard rather than guess. Add the name to
+            <em>Names you often say</em> in its settings.
+          </li>
+          <li>
+            <strong>A short window can hide the band.</strong> In an 80×24 window with a tall
+            status line, Claude Code may not draw the <code>⌃G refine</code> row. Ctrl+G still
+            works.
+          </li>
+          <li>
+            <strong>The plugin API is early access.</strong> CI runs the newest Claude Code every
+            day to catch a release that moves it.
+          </li>
+        </ul>
+      </section>
+
+      <section class="sec" aria-labelledby="plan">
+        <div class="sec-head">
+          <h2 id="plan">Runs on your plan</h2>
+          <p class="lede">
+            It calls the model through your Claude Code session’s own login, billed to your
+            subscription like any prompt. No API key, no network code and no server anywhere in
+            the plugin.
+          </p>
+        </div>
+        <div class="body">
+          <p>
+            Each rewrite is one short call: about 3k tokens of rules, cached after the first
+            rewrite, plus your words. Choose the model in <code>/config</code>:
+            <code>sonnet</code>, fast and light on your plan, or <code>opus</code>, the most
+            faithful.
+          </p>
+          <dl class="touches" aria-label="What it does on your machine">
+            <dt>Sends</dt>
+            <dd>
+              On Ctrl+G only: your draft, with pasted logs and code masked out, plus its rules, to
+              the model through Claude Code’s own session. Nothing else leaves your machine.
+            </dd>
+            <dt>Writes</dt>
+            <dd>
+              <code>keybindings.json</code>, only when you run <code>/unramble setup</code>,
+              keeping your original beside it as <code>keybindings.json.unramble-backup</code>.
+              And your prompt box, only when you press Ctrl+G.
+            </dd>
+            <dt>Reads</dt>
+            <dd>
+              Its own rules, <code>keybindings.json</code>, and the environment variables that find
+              your config folder. It never reads your conversation, history or project files.
+            </dd>
+            <dt>Runs</dt>
+            <dd>No commands and no processes. It adds one slash command, <code>/unramble</code>.</dd>
+          </dl>
+          <p class="dim">
+            <a href="https://github.com/yadava5/unramble/blob/main/SECURITY.md">SECURITY.md</a>
+            lists exactly what the plugin touches and how to report a vulnerability privately.
+          </p>
+        </div>
+      </section>
+
+      <section class="sec" aria-labelledby="tested">
+        <div class="sec-head">
+          <h2 id="tested">Where it is tested</h2>
+          <p class="lede">
+            Terminals send Ctrl+G two ways, so both were tried with a real keypress. Works with
+            Claude Code 2.1.308 and every release after it.
+          </p>
+        </div>
+        <div class="body">
+          <div class="scroll" tabindex="0" role="region" aria-labelledby="tested">
+            <table role="table">
+              <thead role="rowgroup">
+                <tr role="row">
+                  <th scope="col" role="columnheader">Where</th>
+                  <th scope="col" role="columnheader">Ctrl+G arrives as</th>
+                  <th scope="col" role="columnheader">Result</th>
+                </tr>
+              </thead>
+              <tbody role="rowgroup">
+                <tr role="row">
+                  <th scope="row" role="rowheader">kitty, macOS</th>
+                  <td role="cell" data-label="Arrives as">kitty keyboard protocol</td>
+                  <td role="cell" data-label="Result">
+                    Rewrite, restore, cancel, <code>/unramble status</code>
+                  </td>
+                </tr>
+                <tr role="row">
+                  <th scope="row" role="rowheader">Terminal.app, macOS</th>
+                  <td role="cell" data-label="Arrives as">legacy <code>0x07</code></td>
+                  <td role="cell" data-label="Result">Rewrite and restore</td>
+                </tr>
+                <tr role="row">
+                  <th scope="row" role="rowheader">Ghostty 1.3, macOS</th>
+                  <td role="cell" data-label="Arrives as">not measured</td>
+                  <td role="cell" data-label="Result">Rewrite and restore</td>
+                </tr>
+                <tr role="row">
+                  <th scope="row" role="rowheader">VS Code terminal, macOS</th>
+                  <td role="cell" data-label="Arrives as">not measured</td>
+                  <td role="cell" data-label="Result">
+                    Rewrite and restore. Ctrl+G reaches Claude Code, not VS Code’s Go to Line.
+                  </td>
+                </tr>
+                <tr role="row">
+                  <th scope="row" role="rowheader">Cursor terminal, macOS</th>
+                  <td role="cell" data-label="Arrives as">not measured</td>
+                  <td role="cell" data-label="Result">Rewrite and restore</td>
+                </tr>
+                <tr role="row">
+                  <th scope="row" role="rowheader">Linux (Debian, tmux)</th>
+                  <td role="cell" data-label="Arrives as">legacy <code>0x07</code></td>
+                  <td role="cell" data-label="Result">
+                    The key reaches the plugin and the model call goes out
+                  </td>
+                </tr>
+                <tr role="row">
+                  <th scope="row" role="rowheader">Windows, Linux, macOS (CI)</th>
+                  <td role="cell" data-label="Arrives as">not applicable</td>
+                  <td role="cell" data-label="Result">
+                    Install, Ctrl+G binding, uninstall and all tests, every push
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="after">
+            CI also tests the newest Claude Code every day on Linux, macOS and Windows. Not yet
+            tried by hand: iTerm2, Windows Terminal and Kiro’s terminal. If one does not work,
+            please <a href="https://github.com/yadava5/unramble/issues/new/choose">open an issue</a>.
+          </p>
+        </div>
+      </section>
+
+      <section class="sec" aria-labelledby="by-hand" id="install">
+        <div class="sec-head">
+          <h2 id="by-hand">Install by hand</h2>
+          <p class="lede">
+            If the button above does not open Claude Code, either of these does the same thing.
+          </p>
+        </div>
+        <div class="body">
+          <div class="ways">
+            <div class="way">
+              <h3>In your terminal</h3>
+              <p>zsh, bash or PowerShell, not inside Claude Code. Needs Node 18+.</p>
+              <div class="steps">
+                <div class="cmd">
+                  <code>npx unramble</code>
+                  <button class="copy" type="button">
+                    <span class="copy-label">Copy</span><span class="sr-only"> npx unramble</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div class="way">
+              <h3>Or inside Claude Code</h3>
+              <p>One line at a time. No Node needed.</p>
+              <ol class="steps">
+                <li class="cmd">
+                  <code>/plugin install unramble --marketplace yadava5/unramble</code>
+                  <button class="copy" type="button">
+                    <span class="copy-label">Copy</span
+                    ><span class="sr-only"> the plugin install command</span>
+                  </button>
+                </li>
+                <li class="cmd">
+                  <code>/unramble setup</code>
+                  <button class="copy" type="button">
+                    <span class="copy-label">Copy</span><span class="sr-only"> /unramble setup</span>
+                  </button>
+                </li>
+              </ol>
+            </div>
+          </div>
+          <p class="after">
+            Answer <kbd>y</kbd> to add the marketplace. Setup binds Ctrl+G, keeps a backup of your
+            <code>keybindings.json</code> and never overwrites a key you bound yourself. Either
+            way, start a new Claude Code session afterwards, say or type a prompt, and press
+            <kbd>Ctrl+G</kbd>.
+          </p>
+          <div class="later">
+            <div class="way">
+              <h3>Update</h3>
+              <div class="steps">
+                <div class="cmd">
+                  <code>npx unramble update</code>
+                  <button class="copy" type="button">
+                    <span class="copy-label">Copy</span
+                    ><span class="sr-only"> npx unramble update</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div class="way">
+              <h3>Uninstall</h3>
+              <div class="steps">
+                <div class="cmd">
+                  <code>npx unramble uninstall</code>
+                  <button class="copy" type="button">
+                    <span class="copy-label">Copy</span
+                    ><span class="sr-only"> npx unramble uninstall</span>
+                  </button>
+                </div>
+              </div>
+              <p class="after">Takes back only the two Ctrl+G bindings setup added.</p>
+            </div>
+          </div>
+          <p class="sr-only" role="status" id="copy-status"></p>
+        </div>
       </section>
     </main>
 
@@ -626,6 +1692,14 @@
         <ul>
           <li><a href="https://github.com/yadava5/unramble">GitHub</a></li>
           <li><a href="https://www.npmjs.com/package/unramble">npm</a></li>
+          <li>
+            <a href="https://github.com/yadava5/unramble/blob/main/docs/BENCHMARKS.md">Benchmarks</a>
+          </li>
+          <li>
+            <a href="https://github.com/yadava5/unramble/blob/main/docs/HOW-IT-WORKS.md"
+              >How it works</a
+            >
+          </li>
           <li><a href="https://github.com/yadava5/unramble/blob/main/SECURITY.md">Security</a></li>
           <li><a href="https://github.com/yadava5/unramble/blob/main/LICENSE">MIT license</a></li>
         </ul>
@@ -633,6 +1707,97 @@
     </footer>
 
     <script type="module">
+      const root = document.documentElement;
+      const calm = matchMedia("(prefers-reduced-motion: reduce)");
+
+      // Theme: flips whatever is showing now, and remembers the choice.
+      const themeButton = document.querySelector(".theme");
+      const systemDark = matchMedia("(prefers-color-scheme: dark)");
+      const shown = () => root.dataset.theme ?? (systemDark.matches ? "dark" : "light");
+      const labelTheme = () =>
+        themeButton.setAttribute(
+          "aria-label",
+          shown() === "dark" ? "Switch to light theme" : "Switch to dark theme",
+        );
+      labelTheme();
+      systemDark.addEventListener("change", labelTheme);
+      themeButton.addEventListener("click", () => {
+        const next = shown() === "dark" ? "light" : "dark";
+        root.dataset.theme = next;
+        try {
+          localStorage.setItem("unramble-theme", next);
+        } catch {}
+        labelTheme();
+      });
+
+      // The terminal: Ctrl+G rewrites, Ctrl+G while it runs cancels, Ctrl+G on the rewrite
+      // restores. The rewrite is the recorded one, replayed at the 3.3 s it took.
+      const term = document.getElementById("term");
+      const tryButton = document.getElementById("try");
+      const action = document.getElementById("try-action");
+      const termStatus = document.getElementById("term-status");
+      const rough = term.querySelector(".rough");
+      const refined = term.querySelector(".refined");
+      const ACTION = {
+        rough: "Rewrite this prompt",
+        refining: "Cancel the rewrite",
+        refined: "Restore your original",
+      };
+      let pending;
+      const show = (state, message) => {
+        term.dataset.state = state;
+        rough.setAttribute("aria-hidden", String(state === "refined"));
+        refined.setAttribute("aria-hidden", String(state !== "refined"));
+        action.textContent = ACTION[state];
+        termStatus.textContent = message;
+      };
+      const ctrlG = () => {
+        clearTimeout(pending);
+        const state = term.dataset.state;
+        if (state === "rough") {
+          show("refining", "Refining. Press Ctrl+G again to cancel.");
+          pending = setTimeout(
+            () => show("refined", "Rewritten in 3.3 seconds. Ctrl+G again restores your original."),
+            3300,
+          );
+        } else if (state === "refining") {
+          show("rough", "Cancelled. Your draft stays.");
+        } else {
+          show("rough", "Your original is back.");
+        }
+      };
+      tryButton.addEventListener("click", ctrlG);
+
+      // The real chord works too, but only while the terminal is on screen, so it never
+      // takes Ctrl+G from the browser anywhere else on the page.
+      let inView = false;
+      new IntersectionObserver(([entry]) => (inView = entry.isIntersecting)).observe(term);
+      let release;
+      document.addEventListener("keydown", (event) => {
+        if (!inView || event.repeat || !event.ctrlKey || event.metaKey || event.altKey) return;
+        if (event.code !== "KeyG" && event.key.toLowerCase() !== "g") return;
+        event.preventDefault();
+        tryButton.classList.add("is-down");
+        clearTimeout(release);
+        release = setTimeout(() => tryButton.classList.remove("is-down"), 140);
+        ctrlG();
+      });
+
+      // The struck phrases draw once, in reading order, when the comparison is in view.
+      const said = document.getElementById("said");
+      if (!calm.matches) {
+        said.classList.add("undrawn");
+        const watch = new IntersectionObserver(
+          ([entry]) => {
+            if (!entry.isIntersecting) return;
+            said.classList.remove("undrawn");
+            watch.disconnect();
+          },
+          { threshold: 0.6 },
+        );
+        watch.observe(said);
+      }
+
       const status = document.getElementById("copy-status");
       for (const button of document.querySelectorAll(".copy")) {
         const code = button.parentElement.querySelector("code");
