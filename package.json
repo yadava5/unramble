@@ -1,13 +1,20 @@
 {
   "name": "unramble",
   "version": "2.0.1",
-  "description": "Ctrl+G turns a rambling, dictated prompt into a clean, ordered one, in place, on your own Claude Code plan.",
+  "description": "Claude Code plugin: Ctrl+G turns a rambling, dictated prompt into a clean, ordered one, in place, on your own plan. No API key.",
   "keywords": [
     "claude-code",
     "claude-code-plugin",
+    "claude-code-plugins",
+    "claude",
+    "anthropic",
     "dictation",
     "voice",
+    "voice-to-text",
+    "speech-to-text",
     "prompt",
+    "prompt-engineering",
+    "prompt-rewriter",
     "rewrite"
   ],
   "homepage": "https://github.com/yadava5/unramble#readme",

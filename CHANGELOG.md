@@ -4,6 +4,9 @@
 
 - Toasts and command replies no longer read `unramble: unramble: …`. Claude Code already
   heads a plugin's toasts and command output with its name, so the text dropped its own prefix.
+- The npm listing says it is a Claude Code plugin up front and carries more search keywords, and
+  the site's title names Claude Code, so unramble is easier to find (and to tell apart from other
+  projects of the same name).
 
 ## 2.0.0 — 2026-10-22
 
