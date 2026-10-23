@@ -28,6 +28,8 @@ jobs:
         run: |
           mkdir -p _site/fonts
           cp site/index.html _site/
+          # IndexNow key: proves to Bing and the other IndexNow engines that pings for this site are ours
+          cp site/bfc1f2ef756645e2513f674b2ca5dfa4.txt _site/
           cp assets/logo.svg assets/logo-dark.svg assets/wordmark.svg assets/wordmark-dark.svg \
              assets/demo.gif assets/social-preview.png _site/
           cp video/public/fonts/InstrumentSans-Variable.ttf video/public/fonts/JetBrainsMono-Variable.ttf _site/fonts/
