@@ -18,9 +18,12 @@ numbered, standing rules under *Constraints*. Same meaning: nothing added, nothi
 lost. It never answers your question or does the task; it only tidies the prompt you are about
 to send.
 
-## Set up
+## Install
 
-1. In Claude Code: `/plugin install unramble --marketplace yadava5/unramble`
+In a terminal (Node 18+), `npx unramble` installs the plugin and binds Ctrl+G in one step. Or,
+inside Claude Code:
+
+1. `/plugin install unramble --marketplace yadava5/unramble`
 2. Then: `/unramble setup`. This binds Ctrl+G in your `keybindings.json`, keeps a backup of
    that file, and never overwrites a key you bound yourself.
 3. Start a new session, say or type a prompt of three words or more, and press **Ctrl+G**.
