@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- The refine band no longer hides what other plugins, or Claude Code itself, draw above the
+  prompt. While a draft is long enough to refine, the band now sits above that content instead
+  of replacing it.
+
 ## 2.0.1 — 2026-10-22
 
 - Toasts and command replies no longer read `unramble: unramble: …`. Claude Code already

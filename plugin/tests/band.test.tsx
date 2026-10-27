@@ -35,8 +35,14 @@ function engine(on: On, reply: (prompt: string) => string, home: { dir?: string;
     toasts: [] as string[],
     asked: [] as { system?: string; prompt: string }[],
     fold: (inputText: string) => inputText,
+    // what the engine, or another plugin, draws above the prompt beneath the band
+    beneath: '',
   }
   mock.clock(on)
+  on('ui.render', ($, e) => {
+    const { Box, Text } = $.ui.resolve(e)
+    return world.beneath ? <Text>{world.beneath}</Text> : <Box />
+  })
   // the box takes the edit; `fold` stands for the engine turning a paste into a chip
   on('prompt.edit', (_, e) => {
     const input = world.fold(e.inputText)
@@ -134,14 +140,24 @@ test('a dictation app that pastes: the chip is opened up for the rewrite', async
 
 test('two words draw no band', async ($, on) => {
   engine(on, () => CLEAN)
-  on('ui.render', ($, e) => {
-    const { Text } = $.ui.resolve(e)
-    return <Text>engine</Text>
-  })
   await typed($, 'fix it')
   const ui = await $.ui.mount(BAND)
   expect(await ui.find({ type: 'Button' })).toBe(undefined)
   await ui.unmount()
+})
+
+test('the band keeps what is drawn beneath it, with or without a draft to refine', async ($, on) => {
+  const world = engine(on, () => CLEAN)
+  world.beneath = 'beneath'
+  for (const surface of ['terminal', 'desktop'] as const) {
+    for (const draft of [ROUGH, 'fix it']) {
+      await typed($, draft)
+      const ui = await $.ui.mount({ ...BAND, surface, requestId: `band-${surface}-${draft.length}` })
+      expect((await ui.find({ type: 'Text', text: /beneath/ }))?.text).toBe('beneath')
+      expect(Boolean(await ui.find({ type: 'Button' }))).toBe(draft === ROUGH)
+      await ui.unmount()
+    }
+  }
 })
 
 test('a session with Ctrl+G not bound yet says the one step left', async ($, on) => {

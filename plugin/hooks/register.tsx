@@ -264,12 +264,17 @@ export const register: Register = (on, options) => {
     const { Box, Button, Text } = $.ui.resolve(e)
     const key = bound ? '⌃G ' : ''
     const label = busy ? `refining… ${key ? '⌃G cancels' : ''}`.trim() : refined ? `${key}original` : `${key}refine`
+    // whatever other plugins and the engine draw here stays, below the band
+    const below = await next(e)
     return (
-      <Box>
-        <Button key="unramble" plain action={ACTION} label="unramble" onPress={() => refine($, s)}>
-          <Text dimColor>{label}</Text>
-        </Button>
-        {bound ? null : <Text dimColor> · /unramble setup binds ⌃G</Text>}
+      <Box flexDirection="column">
+        <Box>
+          <Button key="unramble" plain action={ACTION} label="unramble" onPress={() => refine($, s)}>
+            <Text dimColor>{label}</Text>
+          </Button>
+          {bound ? null : <Text dimColor> · /unramble setup binds ⌃G</Text>}
+        </Box>
+        {below}
       </Box>
     )
   })
