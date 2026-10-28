@@ -21,6 +21,7 @@
   <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-blue"></a>
   <img alt="Claude Code plugin" src="https://img.shields.io/badge/Claude%20Code-plugin-d97757">
   <img alt="No API key needed" src="https://img.shields.io/badge/API%20key-not%20needed-2ea44f">
+  <a href="https://mods.aidojo.si/mods/yadava5--unramble--unramble/"><img alt="validates on Claude Code" src="https://raw.githubusercontent.com/karanb192/awesome-claude-code-mods/main/badges/yadava5--unramble--unramble-validates.svg"></a>
 </p>
 
 <p align="center">
@@ -148,6 +149,11 @@ that Claude Code installs:
 - **Refuses**: a rewrite that adds a link, a shell command or shell chaining you never said.
   Text pasted into the box can carry instructions, and the prompt goes to an agent that can
   run commands. On 2,240 recorded rewrites this refused none.
+
+The [awesome-claude-code-mods](https://mods.aidojo.si/mods/yadava5--unramble--unramble/)
+catalogue scans the plugin on its own and records the same reach:
+
+[![reach](https://raw.githubusercontent.com/karanb192/awesome-claude-code-mods/main/badges/yadava5--unramble--unramble-reach.svg)](https://mods.aidojo.si/mods/yadava5--unramble--unramble/)
 
 ## Settings
 
